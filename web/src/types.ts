@@ -120,3 +120,29 @@ export interface TrainingPageData {
     rows: { id: string; name: string; title: string; unit: string; states: Record<string, TrainingState | null> }[];
   };
 }
+
+/** A goal shown under a dashboard figure; met is null when there is no data to compare yet. */
+export interface Goal { text: string; met: boolean | null }
+
+/** GET /api/dashboard. Every figure is worked out by the API; the page only draws it. */
+export interface DashboardData {
+  kpis: {
+    open: number; inReview: number; alerts: number;
+    overdue: { count: number; pct: number; goal: Goal | null };
+    avgDays: { value: number | null; goal: Goal | null };
+    reachProd: { pct: number; goal: Goal | null };
+    sentBack: { pct: number; goal: Goal | null };
+    value: { text: string; goal: Goal | null };
+  };
+  pipeline: { stage: string; label: string; total: number; tiers: Record<string, number> }[];
+  sentBackAt: { label: string; count: number }[];
+  rejected: { label: string; count: number }[];
+  mostOverdue: { id: string; title: string; stageLabel: string; daysOverdue: number; dueAt: number }[];
+  recent: AuditEntry[];
+  alerts: { id: string; title: string; stageLabel: string; tier?: string; tierLabel: string; items: string[] }[];
+  exceptions: {
+    days: number; periods: [number, string][]; kinds: [string, string][];
+    rows: { head: string; total: number; kinds: Record<string, number>; cases: { id: string; title: string; stageLabel: string; tier?: string; tierLabel: string }[] }[];
+  };
+  training: null | { id: string; title: string; requiredToSubmit: boolean; applies: number; ok: number; soon: number; notDone: number }[];
+}

@@ -149,3 +149,44 @@ details.msg pre { white-space: pre-wrap; font: inherit; margin: 8px 0 0; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 8px; z-index: 30; max-width: 90vw; }
 .toast.bad { background: var(--bad); color: #fff; }
 .pnote { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+
+/* Dashboard (build 27 style.css: kpis, bars, gauge, goals, exceptions) */
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.kpi .v { font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi .v.ok { color: var(--ok); } .kpi .v.bad { color: var(--bad); }
+.kpi .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi.alert .v { color: var(--bad); }
+.kpihead { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.kpi3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.kpirow2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi.big { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 18px; }
+.kpi.big .ico { color: var(--brand); }
+.kpi.big .v { font-size: 40px; } .kpi.big .v small { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.kpi.big .l { font-size: 13px; }
+.goal { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.gauge h2 { margin: 0 0 4px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.gauge svg { width: 100%; max-width: 320px; display: block; margin: 0 auto; }
+.gauge .gnum { font-size: 34px; font-weight: 700; fill: var(--ink); font-variant-numeric: tabular-nums; } .gauge .glab { font-size: 10px; fill: var(--muted); }
+.glegend { display: flex; justify-content: center; gap: 6px 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 6px 0 12px; }
+.glegend i, .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.bars { display: grid; gap: 8px; }
+.bar { display: grid; grid-template-columns: 120px minmax(0, 1fr) 28px; gap: 10px; align-items: center; font-size: 13px; }
+.bar .track { display: flex; height: 16px; background: var(--surface-2); border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.bar .seg { height: 100%; } .seg.low { background: var(--t-low); } .seg.moderate { background: var(--t-moderate); } .seg.high { background: var(--t-high); } .seg.critical { background: var(--t-critical); } .seg.none { background: var(--tint); }
+.bar .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 10px; }
+.exbar { grid-template-columns: 200px minmax(0, 1fr) 36px; width: 100%; background: none; border: 0; padding: 3px 4px; text-align: left; cursor: pointer; font: inherit; color: inherit; border-radius: 6px; }
+.exbar:hover, .exbar.on { background: var(--brand-soft); }
+.seg.exk-unsupported, .legend i.exk-unsupported { background: #ffc20e; } .seg.exk-declined, .legend i.exk-declined { background: #b3261e; }
+.seg.exk-missing, .legend i.exk-missing { background: #6b7a89; } .seg.exk-concern, .legend i.exk-concern { background: #e9a23b; }
+.seg.exk-serious, .legend i.exk-serious { background: #7a1d17; } .seg.exk-condition, .legend i.exk-condition { background: #b2c7d6; }
+.tl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.tl:last-child { border-bottom: 0; }
+.tl .when { font-size: 12px; color: var(--muted); } .tl .what { font-weight: 600; } .tl .note { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .kpihead, .kpi3 { grid-template-columns: minmax(0, 1fr); }
+  .kpi.big { flex-direction: row; align-items: center; gap: 12px; }
+  .bar, .exbar { grid-template-columns: 96px minmax(0, 1fr) 28px; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+}

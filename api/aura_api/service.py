@@ -266,6 +266,22 @@ def training_reminders(store: Store, pid: str) -> dict:
     return {"peopleReminded": n}
 
 
+# ---- dashboard ----
+
+def dashboard(store: Store, pid: str, ex_days: str | None = None) -> dict:
+    """The Dashboard. ``ex_days`` is the exceptions period: 30, 90, 180 (the default), 365 or 0 for all time."""
+    days = int(ex_days) if ex_days and ex_days.isdigit() else 180
+    if days not in [d for d, _ in views.EXC_PERIODS]:
+        raise EngineError("Choose a period from the list.")
+    return views.dashboard(store.data, person(pid), clock_ms(), days)
+
+
+def cases_export(store: Store, pid: str) -> dict:
+    """Every use case as CSV text. The browser turns it into a file download."""
+    person(pid)
+    return {"filename": "use-cases.csv", "csv": views.cases_csv(store.cases, clock_ms())}
+
+
 # ---- AI tool catalog ----
 
 def list_tools(store: Store, pid: str) -> list[dict]:

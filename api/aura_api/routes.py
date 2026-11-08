@@ -10,6 +10,7 @@ except ``GET /api/bootstrap``)::
     GET  /api/queue                              cases waiting for me
     GET  /api/cases                              all cases (list rows)
     POST /api/cases                              log a suggestion {title, idea, unitId?}
+    GET  /api/cases/export                       every use case as CSV text
     GET  /api/cases/{id}                         the case page
     POST /api/cases/{id}/actions/{action}        carry out an action {input}
     POST /api/cases/{id}/preview                 live checks for a form being edited {form}
@@ -19,6 +20,7 @@ except ``GET /api/bootstrap``)::
     GET  /api/audit?who=p_sam&q=vote             the audit log, newest first (who: auto, a case or a person)
     POST /api/audit/verify                       check the hash chain on every case
     GET  /api/audit/export                       the whole audit log as CSV text
+    GET  /api/dashboard?exDays=180               the dashboard (exDays: the accepted-exceptions period)
     GET  /api/training                           my training, and everyone's for the lead, auditor and admin
     POST /api/training/{id}/complete             record that I finished a course
     POST /api/training/remind                    email everyone with training due (lead or admin)
@@ -56,6 +58,7 @@ ROUTES = [
     ("GET", r"/api/queue", lambda st, pid, m, q, b: S.queue(st, pid)),
     ("GET", r"/api/cases", lambda st, pid, m, q, b: S.list_cases(st, pid)),
     ("POST", r"/api/cases", lambda st, pid, m, q, b: S.create_case(st, pid, b.get("title"), b.get("idea"), b.get("unitId"))),
+    ("GET", r"/api/cases/export", lambda st, pid, m, q, b: S.cases_export(st, pid)),  # above cases/{id}, which would match it too
     ("GET", r"/api/cases/(?P<id>[\w-]+)", lambda st, pid, m, q, b: S.get_case(st, pid, m["id"])),
     ("POST", r"/api/cases/(?P<id>[\w-]+)/actions/(?P<action>\w+)", lambda st, pid, m, q, b: S.perform(st, pid, m["id"], m["action"], b.get("input"))),
     ("POST", r"/api/cases/(?P<id>[\w-]+)/preview", lambda st, pid, m, q, b: S.preview_form(st, pid, m["id"], b.get("form"))),
@@ -65,6 +68,7 @@ ROUTES = [
     ("GET", r"/api/audit", lambda st, pid, m, q, b: S.audit_log(st, pid, q.get("who"), q.get("q"))),
     ("POST", r"/api/audit/verify", lambda st, pid, m, q, b: S.verify_audit_trail(st, pid)),
     ("GET", r"/api/audit/export", lambda st, pid, m, q, b: S.audit_export(st, pid)),
+    ("GET", r"/api/dashboard", lambda st, pid, m, q, b: S.dashboard(st, pid, q.get("exDays"))),
     ("GET", r"/api/training", lambda st, pid, m, q, b: S.training(st, pid)),
     ("POST", r"/api/training/remind", lambda st, pid, m, q, b: S.training_reminders(st, pid)),
     ("POST", r"/api/training/(?P<id>[\w-]+)/complete", lambda st, pid, m, q, b: S.complete_training(st, pid, m["id"])),

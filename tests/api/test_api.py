@@ -179,3 +179,40 @@ def test_training_reminders_go_to_the_outbox(api):
     reminders = [m for m in mails if m["subject"] == "Reminder: training due"]
     assert len(reminders) == out["peopleReminded"] and reminders[0]["ref"]["id"] == "TRAINING"
     assert reminders[0]["body"].startswith("Please complete: ")
+
+
+# ---- dashboard ----
+
+def test_dashboard_figures_from_the_sample_data(api):
+    status, d = api("GET", "/api/dashboard")
+    assert status == 200
+    k = d["kpis"]
+    assert k["open"] == 14 and k["overdue"]["count"] == 5 and k["overdue"]["pct"] == 36
+    assert k["overdue"]["goal"] == {"text": "25%", "met": False} and k["value"]["text"] == "$829K"
+    assert sum(s["total"] for s in d["pipeline"]) == 18
+    assert [c["id"] for c in d["mostOverdue"]][:2] == ["UC-1007", "UC-1005"]
+    assert {a["id"] for a in d["alerts"]} == {"UC-1001", "UC-1005"}
+    assert d["exceptions"]["days"] == 180 and d["exceptions"]["rows"]
+
+
+def test_dashboard_training_summary_is_for_managers_only(api):
+    assert api("GET", "/api/dashboard", pid="p_dana")[1]["training"] is None
+    rows = api("GET", "/api/dashboard", pid="p_elena")[1]["training"]
+    assert rows and all(r["ok"] + r["notDone"] == r["applies"] for r in rows)
+
+
+def test_dashboard_exceptions_period(api):
+    _, everything = api("GET", "/api/dashboard", exDays="0")
+    _, month = api("GET", "/api/dashboard", exDays="30")
+
+    def total(d):
+        return sum(r["total"] for r in d["exceptions"]["rows"])
+    assert total(month) <= total(everything)
+    assert api("GET", "/api/dashboard", exDays="7")[0] == 400
+
+
+def test_cases_export_is_csv_by_id(api):
+    status, out = api("GET", "/api/cases/export")
+    lines = out["csv"].split("\n")
+    assert status == 200 and out["filename"] == "use-cases.csv"
+    assert lines[0].startswith("ID,Title,Proposed solution,Stage") and lines[1].startswith("UC-1001,")
