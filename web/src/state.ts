@@ -4,7 +4,7 @@
 import { createContext, useContext } from 'react';
 import type { Bootstrap, Person } from './types';
 
-/** A page in the app, from the URL hash: #/queue, #/cases, #/cases/UC-1001, #/new, #/tools, #/tools/T-1001, #/outbox, #/audit, #/audit/UC-1012, #/training, #/dash. */
+/** A page in the app, from the URL hash: #/queue, #/cases, #/cases/UC-1001, #/new, #/tools, #/tools/T-1001, #/outbox, #/audit, #/audit/UC-1012, #/training, #/dash, #/rules. */
 export interface Route { page: string; id?: string }
 
 export const parseHash = (hash: string): Route => {
@@ -20,6 +20,8 @@ export interface AppState {
   /** Bumped after every change, so lists and counts reload. */
   version: number;
   changed: () => void;
+  /** Load the people, rules and labels again, after the rules are saved. */
+  reloadBoot: () => void;
   toast: (text: string, bad?: boolean) => void;
   person: (id?: string | null) => Person | undefined;
   name: (id?: string | null) => string;

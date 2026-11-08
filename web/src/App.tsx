@@ -14,6 +14,7 @@ import { DataPage } from './pages/DataPage';
 import { AuditPage } from './pages/AuditPage';
 import { TrainingPage } from './pages/TrainingPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { RulesPage } from './pages/RulesPage';
 
 const START_AS = 'p_dana';
 const remembered = () => { try { return localStorage.getItem('aura.as') || START_AS; } catch { return START_AS; } };
@@ -27,6 +28,8 @@ export function App() {
   const [toastMsg, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
   const [queueCount, setQueueCount] = useState(0);
   const [trainingDue, setTrainingDue] = useState(0);
+
+  const reloadBoot = useCallback(() => { get<Bootstrap>('/bootstrap').then(setBoot).catch(() => { /* keep the old labels */ }); }, []);
 
   useEffect(() => {
     get<Bootstrap>('/bootstrap').then(setBoot).catch(() => setFailed('Cannot reach the AURA API. Is "python api/dev_server.py" running?'));
@@ -52,8 +55,8 @@ export function App() {
     if (!boot) return null;
     const me = boot.people.find(p => p.id === asId) || boot.people[0];
     const person = (id?: string | null) => boot.people.find(p => p.id === id);
-    return { boot, me, version, changed: () => setVersion(v => v + 1), toast, person, name: id => person(id)?.name || id || '' };
-  }, [boot, asId, version, toast]);
+    return { boot, me, version, changed: () => setVersion(v => v + 1), reloadBoot, toast, person, name: id => person(id)?.name || id || '' };
+  }, [boot, asId, version, toast, reloadBoot]);
 
   if (failed) return <div className="main"><div className="callout bad"><b>{failed}</b></div></div>;
   if (!state) return <div className="main muted">Loading AURA...</div>;
@@ -90,7 +93,7 @@ export function App() {
           {state.me.role !== 'admin' && navItem('training', 'Training', trainingDue)}
           {navItem('outbox', 'Outbox')}
           {navItem('audit', 'Audit log')}
-          {(state.me.role === 'admin' || state.me.role === 'lead') && <><div className="sep">Demo</div>{navItem('data', 'Data and demo')}</>}
+          {(state.me.role === 'admin' || state.me.role === 'lead') && <><div className="sep">Demo</div>{state.me.role === 'admin' && navItem('rules', 'Rules')}{navItem('data', 'Data and demo')}</>}
         </nav>
         <main className="main">{page(route)}</main>
       </div>
@@ -109,6 +112,7 @@ function page(r: Route) {
     case 'audit': return <AuditPage caseId={r.id} />;
     case 'training': return <TrainingPage />;
     case 'dash': return <DashboardPage />;
+    case 'rules': return <RulesPage />;
     case 'data': return <DataPage />;
     default: return <QueuePage />;
   }
