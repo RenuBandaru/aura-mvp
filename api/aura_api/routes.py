@@ -28,6 +28,14 @@ except ``GET /api/bootstrap``)::
     POST /api/tools                              start reporting a tool (a private draft)
     GET  /api/tools/{id}                         one tool
     POST /api/tools/{id}/actions/{action}        act on a tool {input}
+    GET  /api/rules                              the saved rules, versions and editor labels (demo admin)
+    POST /api/rules/inspect                      facts about each item in a draft {draft}
+    POST /api/rules/item                         check one edited item into the draft {draft, kind, item, isNew, area?, index?}
+    POST /api/rules/check                        errors and warnings before saving {draft}
+    POST /api/rules/whatif                       score imaginary answers under a draft {draft, input, rule?}
+    GET  /api/rules/versions/{n}                 one saved version, to load into the draft
+    POST /api/rules/save                         save the draft as a new version {draft, reason, acceptWarnings}
+    POST /api/rules/rescore                      re-score open cases under the saved rules (lead or admin)
     POST /api/admin/sweep                        reminder sweep (lead or admin)
     POST /api/admin/reset                        reset to the sample data (admin)
     POST /api/admin/tamper                       demo: alter one audit entry so Verify catches it (admin)
@@ -76,6 +84,14 @@ ROUTES = [
     ("POST", r"/api/tools", lambda st, pid, m, q, b: S.new_tool(st, pid)),
     ("GET", r"/api/tools/(?P<id>[\w-]+)", lambda st, pid, m, q, b: S.get_tool(st, pid, m["id"])),
     ("POST", r"/api/tools/(?P<id>[\w-]+)/actions/(?P<action>\w+)", lambda st, pid, m, q, b: S.tool_action(st, pid, m["id"], m["action"], b.get("input"))),
+    ("GET", r"/api/rules", lambda st, pid, m, q, b: S.rules_page(st, pid)),
+    ("POST", r"/api/rules/inspect", lambda st, pid, m, q, b: S.rules_inspect(st, pid, b.get("draft"))),
+    ("POST", r"/api/rules/item", lambda st, pid, m, q, b: S.rules_apply_item(st, pid, b)),
+    ("POST", r"/api/rules/check", lambda st, pid, m, q, b: S.rules_check(st, pid, b.get("draft"))),
+    ("POST", r"/api/rules/whatif", lambda st, pid, m, q, b: S.rules_what_if(st, pid, b)),
+    ("GET", r"/api/rules/versions/(?P<n>\d+)", lambda st, pid, m, q, b: S.rules_version(st, pid, m["n"])),
+    ("POST", r"/api/rules/save", lambda st, pid, m, q, b: S.save_rules(st, pid, b.get("draft"), b.get("reason"), bool(b.get("acceptWarnings")))),
+    ("POST", r"/api/rules/rescore", lambda st, pid, m, q, b: S.rescore_open_cases(st, pid)),
     ("POST", r"/api/admin/sweep", lambda st, pid, m, q, b: S.reminder_sweep(st, pid)),
     ("POST", r"/api/admin/reset", lambda st, pid, m, q, b: S.reset(st, pid)),
     ("POST", r"/api/admin/tamper", lambda st, pid, m, q, b: S.tamper(st, pid)),

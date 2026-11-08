@@ -11,6 +11,7 @@ here re-checks permissions.
 from __future__ import annotations
 
 import base64
+import json
 
 import aura_engine as E
 from aura_engine import constants
@@ -19,10 +20,11 @@ from aura_engine.errors import EngineError
 from aura_engine.controls import CTL_STATUS
 from aura_engine.forms import FORM_FIELDS, ONGOING_BASIS
 from aura_engine.matching import options_of
+from aura_engine.rules import norm_rules
 from aura_engine.tools import TOOL_STATUS, next_tool_id
 from aura_engine.jsx import clone
 
-from . import views
+from . import rules_admin, views
 from .store import Store, clock_ms
 
 MAX_UPLOAD = 2_000_000  # bytes accepted by the API; the engine applies the real evidence limit
@@ -280,6 +282,108 @@ def cases_export(store: Store, pid: str) -> dict:
     """Every use case as CSV text. The browser turns it into a file download."""
     person(pid)
     return {"filename": "use-cases.csv", "csv": views.cases_csv(store.cases, clock_ms())}
+
+
+# ---- rules editor (demo admin) ----
+
+def _admin(pid: str) -> dict:
+    p = person(pid)
+    if p["role"] != "admin":
+        raise EngineError("Only the demo admin can change the rules.")
+    return p
+
+
+def _draft(draft) -> dict:
+    """A draft from the browser, refused politely when it is not a usable set of rules (for example bad JSON)."""
+    if not isinstance(draft, dict) or not all(k in draft for k in ("questions", "rules", "tiers", "deadlines")):
+        raise EngineError("The rules are missing required sections.")
+    try:
+        return norm_rules(draft)
+    except Exception:
+        raise EngineError("These rules cannot be read. Check the JSON on the Advanced tab.") from None
+
+
+def rules_page(store: Store, pid: str) -> dict:
+    """The saved rules, their versions and the editor's fixed labels."""
+    _admin(pid)
+    versions = sorted(store.data.get("versions") or [], key=lambda v: -v["n"])
+    scored = {}
+    for c in store.cases:
+        n = (c.get("scoring") or {}).get("rv")
+        scored[n] = scored.get(n, 0) + 1
+    return {"rules": store.rules, "version": store.rules_version(), "defaults": E.default_rules(), "labels": rules_admin.labels(),
+            "versions": [{"n": v["n"], "at": v["at"], "by": v["by"], "byName": constants.by_id(v["by"])["name"], "reason": v["reason"],
+                          "summary": v.get("summary") or [], "casesScored": scored.get(v["n"], 0)} for v in versions]}
+
+
+def rules_inspect(store: Store, pid: str, draft: dict) -> dict:
+    _admin(pid)
+    return rules_admin.inspect(_draft(draft), store.rules, store.cases)
+
+
+def rules_apply_item(store: Store, pid: str, body: dict) -> dict:
+    _admin(pid)
+    return {"draft": rules_admin.apply_item(_draft(body.get("draft")), body.get("kind"), body.get("item"), bool(body.get("isNew")),
+                                            body.get("area"), body.get("index"))}
+
+
+def rules_check(store: Store, pid: str, draft: dict) -> dict:
+    _admin(pid)
+    return {**rules_admin.check(_draft(draft), store.rules, store.cases), "nextVersion": store.rules_version() + 1}
+
+
+def rules_what_if(store: Store, pid: str, body: dict) -> dict:
+    _admin(pid)
+    return rules_admin.try_answers(_draft(body.get("draft")), body.get("input"), body.get("rule"))
+
+
+def rules_version(store: Store, pid: str, n: str) -> dict:
+    """One saved version's rules, to load into the draft."""
+    _admin(pid)
+    v = next((x for x in store.data.get("versions") or [] if str(x["n"]) == n), None)
+    if not v:
+        raise NotFound("No version " + n + " of the rules.")
+    return {"rules": norm_rules(json.loads(v["json"]))}
+
+
+def save_rules(store: Store, pid: str, draft: dict, reason: str, accept_warnings: bool = False) -> dict:
+    """Save the draft as a new version of the rules. JavaScript ``publishRules``.
+
+    The checks run here again, whatever the browser showed: errors always refuse, and warnings
+    refuse unless the admin has seen them and chose "Save anyway". One reason covers the whole save.
+    """
+    actor = _admin(pid)
+    draft = _draft(draft)
+    reason = str(reason or "").strip()
+    if not reason:
+        raise EngineError("Say why the rules are changing. One reason covers the whole save.")
+    with store.lock:
+        v = rules_admin.check(draft, store.rules, store.cases)
+        if v["errors"] or (v["warnings"] and not accept_warnings):
+            return {"saved": False, **v}
+        rules = norm_rules(draft)
+        n = store.rules_version() + 1
+        store.data.setdefault("versions", []).append({"n": n, "at": clock_ms(), "by": actor["id"], "reason": reason,
+                                                      "summary": v["changes"] or ["No setting changed."], "json": E.js_json(rules)})
+        store.data["rules"] = rules
+        store.save()
+    return {"saved": True, "version": n}
+
+
+def rescore_open_cases(store: Store, pid: str) -> dict:
+    """Score every case in vetting, panel or executive review again under the saved rules. JavaScript ``rescore``."""
+    if person(pid)["role"] not in ("lead", "admin"):
+        raise EngineError("Only the governance lead or the demo admin can re-score cases.")
+    n = 0
+    with store.lock:
+        ctx = store.ctx()
+        for c in list(store.cases):
+            r = E.rescore(c, ctx)
+            if r:
+                store.put_case(r)
+                n += 1
+        store.save()
+    return {"rescored": n}
 
 
 # ---- AI tool catalog ----

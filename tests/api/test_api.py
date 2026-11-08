@@ -216,3 +216,71 @@ def test_cases_export_is_csv_by_id(api):
     lines = out["csv"].split("\n")
     assert status == 200 and out["filename"] == "use-cases.csv"
     assert lines[0].startswith("ID,Title,Proposed solution,Stage") and lines[1].startswith("UC-1001,")
+
+
+# ---- rules editor ----
+
+def _rules(api):
+    return api("GET", "/api/rules", pid="p_admin")[1]
+
+
+def test_only_the_admin_edits_rules(api):
+    assert api("GET", "/api/rules", pid="p_elena")[0] == 400
+    page = _rules(api)
+    assert page["version"] == 1 and page["versions"][0]["n"] == 1 and page["labels"]["kindOrder"][0] == "guardrail"
+
+
+def test_inspect_explains_what_each_item_is_used_by(api):
+    draft = _rules(api)["rules"]
+    status, info = api("POST", "/api/rules/inspect", pid="p_admin", body={"draft": draft})
+    assert status == 200 and info["changes"] == [] and info["dirtyTabs"] == []
+    assert info["questions"]["q_us"]["deleteBlock"].startswith("Used by")
+    assert info["rules"]["g_enc"]["when"] == '"Unencrypted data" is Yes or Not known'
+
+
+def test_adding_a_rule_then_saving_makes_a_new_version(api):
+    draft = _rules(api)["rules"]
+    item = {"kind": "points", "label": "Test rule", "enabled": True, "when": [{"src": "q:q_us", "in": ["yes"]}], "points": 2}
+    status, out = api("POST", "/api/rules/item", pid="p_admin", body={"draft": draft, "kind": "rule", "item": item, "isNew": True})
+    assert status == 200 and out["draft"]["rules"][-1]["id"] == "pt_test_rule"
+    _, info = api("POST", "/api/rules/inspect", pid="p_admin", body={"draft": out["draft"]})
+    assert info["changes"] == ["Rule added: Test rule."] and info["dirtyTabs"] == ["rules"]
+    assert api("POST", "/api/rules/save", pid="p_admin", body={"draft": out["draft"], "reason": " "})[0] == 400
+    status, saved = api("POST", "/api/rules/save", pid="p_admin", body={"draft": out["draft"], "reason": "Testing"})
+    assert saved == {"saved": True, "version": 2}
+    page = _rules(api)
+    assert page["version"] == 2 and page["versions"][0]["summary"] == ["Rule added: Test rule."]
+    assert api("GET", "/api/bootstrap", pid=None)[1]["rules"]["rules"][-1]["id"] == "pt_test_rule"
+
+
+def test_an_edit_with_a_blank_condition_is_refused(api):
+    draft = _rules(api)["rules"]
+    item = {"kind": "points", "label": "x", "when": [{"src": "q:q_us", "in": []}]}
+    assert api("POST", "/api/rules/item", pid="p_admin", body={"draft": draft, "kind": "rule", "item": item, "isNew": True}) == \
+        (400, {"error": "Condition 1 needs at least one answer ticked."})
+
+
+def test_save_refuses_errors_and_waits_for_warnings(api):
+    draft = _rules(api)["rules"]
+    used = dict(draft, questions=[q for q in draft["questions"] if q["id"] != "q_us"])  # deleting an answered question
+    _, out = api("POST", "/api/rules/save", pid="p_admin", body={"draft": used, "reason": "x", "acceptWarnings": True})
+    assert out["saved"] is False and out["errors"]
+    assert _rules(api)["version"] == 1
+    assert api("POST", "/api/rules/save", pid="p_admin", body={"draft": {"nope": 1}, "reason": "x"}) == \
+        (400, {"error": "The rules are missing required sections."})
+
+
+def test_what_if_scores_imaginary_answers(api):
+    draft = _rules(api)["rules"]
+    _, calm = api("POST", "/api/rules/whatif", pid="p_admin", body={"draft": draft, "input": {}})
+    _, risky = api("POST", "/api/rules/whatif", pid="p_admin", body={"draft": draft, "input": {"answers": {"q_enc": "unknown"}}})
+    assert calm["stops"] == [] and [s["id"] for s in risky["stops"]] == ["g_enc"]
+    assert calm["questions"] and all({"id", "text", "options"} <= set(q) for q in calm["questions"])
+
+
+def test_loading_an_old_version_and_rescoring(api):
+    assert api("GET", "/api/rules/versions/1", pid="p_admin")[1]["rules"]["questions"]
+    assert api("GET", "/api/rules/versions/9", pid="p_admin")[0] == 404
+    assert api("POST", "/api/rules/rescore", pid="p_dana")[0] == 400
+    status, out = api("POST", "/api/rules/rescore", pid="p_elena")
+    assert status == 200 and out["rescored"] > 0
