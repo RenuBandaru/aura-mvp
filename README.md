@@ -15,19 +15,22 @@ All data in this repository is invented sample data. Default rules are placehold
 
 ## See the app on your laptop
 
-You need Python 3.11 or newer. From the project folder:
+You need Python 3.11 or newer and Node.js 18 or newer. The first time, from the project folder:
 
 ```bash
+cd web && npm install && npm run build && cd ..   # builds the screens into web/dist
 python api/dev_server.py
 ```
+
+After that, `python api/dev_server.py` is enough. Restart it after any Python change, and run
+`npm run build` again after any change in `web/`.
 
 Then open http://localhost:7071. Use **Viewing as** at the top right to act as any of the 24 sample
 people: Dana Whitfield (submitter), Elena Duarte (governance lead), Sam Okafor (panel), Margaret Hale
 (executive) and so on. Changes are kept in `api/.data/aura.json`; switch Viewing as to Demo admin and use
 **Data and demo** to reset to the sample data. Press Ctrl+C in the terminal to stop.
 
-That command serves the screens from `web/dist`, a ready-built copy. To change the screens you also
-need Node.js 18 or newer:
+While changing the screens, use the live-reloading dev server instead:
 
 ```bash
 cd web

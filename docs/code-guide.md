@@ -193,5 +193,5 @@ with `.map`. The official tutorial at react.dev covers all three.
 
 1. **Data that survives restarts in Azure.** A `Store` backed by Azure SQL or Table storage, with the same methods.
 2. **Microsoft sign-in.** MSAL in React, Entra ID in front of the API, and a mapping from signed-in users to AURA people.
-3. **The remaining build 27 screens**: dashboard, rules editor, training and audit log.
+3. **The remaining build 27 screens**: dashboard, rules editor and training. The audit log is done now.
 4. **Deploy to the BWC sandbox** once the above works locally.
