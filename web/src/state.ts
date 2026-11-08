@@ -4,7 +4,7 @@
 import { createContext, useContext } from 'react';
 import type { Bootstrap, Person } from './types';
 
-/** A page in the app, from the URL hash: #/queue, #/cases, #/cases/UC-1001, #/new, #/tools, #/tools/T-1001, #/outbox. */
+/** A page in the app, from the URL hash: #/queue, #/cases, #/cases/UC-1001, #/new, #/tools, #/tools/T-1001, #/outbox, #/audit, #/audit/UC-1012. */
 export interface Route { page: string; id?: string }
 
 export const parseHash = (hash: string): Route => {

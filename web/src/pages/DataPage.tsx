@@ -1,4 +1,5 @@
-// Demo controls: run the reminder sweep (governance lead) and reset to the sample data (demo admin).
+// Demo controls: run the reminder sweep (governance lead), reset to the sample data and the audit
+// tamper demo (demo admin).
 
 import { post } from '../api';
 import { useApp } from '../state';
@@ -21,6 +22,10 @@ export function DataPage() {
           <p className="muted" style={{ marginBottom: 10 }}>Throws away every change and rebuilds the 18 sample use cases as of now. Demo admin only.</p>
           <button className="btn danger" disabled={me.role !== 'admin'} onClick={() => window.confirm('Reset all data to the samples?') && run('/admin/reset', () => 'Sample data restored.')}>Reset to sample data</button>
           {me.role !== 'admin' && <p className="small muted" style={{ marginTop: 6 }}>Switch "Viewing as" to Demo admin to reset.</p>}
+        </div>
+        <div className="card"><h2>Tamper with the audit trail</h2>
+          <p className="muted" style={{ marginBottom: 10 }}>Edits one old audit entry directly in the saved data, the way someone with database access might, without going through the engine. Then open the Audit log and press Verify audit trail to see the hash chain catch it. Demo admin only; reset to sample data afterwards.</p>
+          <button className="btn danger" disabled={me.role !== 'admin'} onClick={() => run('/admin/tamper', r => `Entry ${r.entry} on ${r.caseId} was altered. Open the Audit log and run Verify audit trail.`)}>Alter one audit entry</button>
         </div>
       </div>
     </>

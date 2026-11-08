@@ -1,7 +1,7 @@
 // The read-only sections of a case page, one component per tab. Ports of build 27's ucViewHtml,
 // assessHtml, attestCard, consultHtml, decisionsHtml and activityHtml (simplified layouts).
 
-import { useApp } from '../state';
+import { go, useApp } from '../state';
 import type { CaseDetail, Dict } from '../types';
 import { fdate, fdatetime, money } from '../format';
 import { measuresText } from './MeasuresEditor';
@@ -144,7 +144,8 @@ export function Activity({ d }: { d: CaseDetail }) {
   const { name } = useApp();
   const audit = [...(d.case.audit || [])].reverse();
   return (
-    <div className="card"><h2>Activity</h2>
+    <div className="card"><div className="row" style={{ justifyContent: 'space-between' }}><h2>Activity</h2>
+        <button className="btn ghost" onClick={() => go('audit', d.case.id)}>See in audit log</button></div>
       <p className={'small ' + (d.auditCheck.ok ? 'pos' : '')} style={{ marginBottom: 10, color: d.auditCheck.ok ? undefined : 'var(--bad)' }}>
         {d.auditCheck.ok ? `Audit trail verified: all ${d.auditCheck.entries} entries are intact (each one is sealed with a hash of the one before).` : 'The audit trail does not verify. An entry was changed after it was recorded.'}</p>
       <ul className="timeline">{audit.map((e: Dict, i: number) => <li key={i}><div><b>{e.action}</b> <span className="muted small">{e.actor === 'system' ? 'System' : name(e.actor)}, {fdatetime(e.ts)}</span></div>
