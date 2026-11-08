@@ -114,9 +114,29 @@ def test_outbox_filters_by_person(api):
     _, mails = api("GET", "/api/outbox", who="p_grant")
     assert mails and all("p_grant" in m["to"] for m in mails)
 
+
 def test_audit_log_is_newest_first_and_filters_by_case(api):
     status, out = api("GET", "/api/audit", who="UC-1012")
     assert status == 200 and out["total"] == len(out["entries"]) > 0
     assert {e["caseId"] for e in out["entries"]} == {"UC-1012"}
     times = [e["ts"] for e in out["entries"]]
     assert times == sorted(times, reverse=True)
+
+
+def test_tamper_is_caught_by_verify(api):
+    _, before = api("POST", "/api/audit/verify")
+    assert all(r["ok"] for r in before["results"])
+    assert api("POST", "/api/admin/tamper", pid="p_dana")[0] == 400   # only the admin may
+    status, t = api("POST", "/api/admin/tamper", pid="p_admin")
+    assert status == 200
+    _, after = api("POST", "/api/audit/verify")
+    bad = [r for r in after["results"] if not r["ok"]]
+    assert len(bad) == 1 and bad[0]["id"] == t["caseId"] and bad[0]["brokenAt"] == t["entry"]
+
+
+def test_audit_export_is_csv_oldest_first(api):
+    status, out = api("GET", "/api/audit/export")
+    lines = out["csv"].split("\n")
+    assert status == 200 and out["filename"] == "audit-log.csv"
+    assert lines[0].startswith("Time,Case,Title,Actor")
+    assert lines[1] < lines[-1]  # ISO times sort as text, so the first row is the oldest

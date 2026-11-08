@@ -10,6 +10,7 @@ Most functions here are ports of small view helpers from build 27's ``ui.js`` (`
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 
 import aura_engine as E
 from aura_engine import constants, controls, matching, review
@@ -241,6 +242,7 @@ def submit_gaps(form: dict, rules: dict) -> dict:
             "readiness": [{"id": r["id"], "text": r["text"]} for r in g["readiness"]], "fields": fields,
             "count": len(g["questions"]) + len(g["readiness"]) + len(fields)}
 
+
 # ---- Audit Log ----
 
 def audit_entries(cases: list[dict], viewer: dict) -> list[dict]:
@@ -255,6 +257,7 @@ def audit_entries(cases: list[dict], viewer: dict) -> list[dict]:
             rows.append({**e,"caseId": c["id"], "caseTitle": c["title"],
                          "actorName": actor["name"] if actor else "" })
     return sorted(rows, key=lambda r: r["ts"], reverse=True)
+
 
 AUDIT_PAGE = 250  # rows shown on the page; the CSV export has every row
 
@@ -274,3 +277,18 @@ def filter_audit(rows: list[dict], who: str | None, q: str | None) -> list[dict]
         rows = [r for r in rows if needle in ((r.get("action") or "") + (r.get("note") or "")
                                               + r["caseTitle"] + r["caseId"]).lower()]
     return rows
+
+
+def _iso(ts: int) -> str:
+    """JavaScript ``new Date(ts).toISOString()``: UTC, milliseconds, ending in Z."""
+    return datetime.fromtimestamp(ts / 1000, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.") + f"{ts % 1000:03d}Z"
+
+
+def audit_csv(cases: list[dict], viewer: dict) -> str:
+    """The Audit log as CSV, oldest first, with the same masking as the screen. JavaScript ``auditCsv``."""
+    rows = [["Time", "Case", "Title", "Actor", "Automated", "Action", "From", "To", "Detail", "Rules version", "Hash"]]
+    for r in sorted(audit_entries(cases, viewer), key=lambda r: r["ts"]):
+        rows.append([_iso(r["ts"]), r["caseId"], r["caseTitle"], r["actorName"], "yes" if r.get("auto") else "no",
+                     r.get("action"), constants.STAGE_LABEL.get(r.get("from"), ""),
+                     constants.STAGE_LABEL.get(r.get("to"), ""), r.get("note"), r.get("rv") or "", r.get("hash") or ""])
+    return E.to_csv(rows)

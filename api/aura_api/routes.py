@@ -17,12 +17,15 @@ except ``GET /api/bootstrap``)::
     GET  /api/outbox?who=p_dana                  simulated emails
     GET  /api/files/{id}                         an uploaded evidence file
     GET  /api/audit?who=p_sam&q=vote             the audit log, newest first (who: auto, a case or a person)
+    POST /api/audit/verify                       check the hash chain on every case
+    GET  /api/audit/export                       the whole audit log as CSV text
     GET  /api/tools                              the AI tool catalog
     POST /api/tools                              start reporting a tool (a private draft)
     GET  /api/tools/{id}                         one tool
     POST /api/tools/{id}/actions/{action}        act on a tool {input}
     POST /api/admin/sweep                        reminder sweep (lead or admin)
     POST /api/admin/reset                        reset to the sample data (admin)
+    POST /api/admin/tamper                       demo: alter one audit entry so Verify catches it (admin)
 
 Errors come back as ``{"error": message}``: 400 when the engine refuses (the message is for people),
 404 when something does not exist.
@@ -57,12 +60,15 @@ ROUTES = [
     ("GET", r"/api/outbox", lambda st, pid, m, q, b: S.outbox(st, pid, q.get("who"))),
     ("GET", r"/api/files/(?P<id>[\w-]+)", lambda st, pid, m, q, b: S.file_content(st, pid, m["id"])),
     ("GET", r"/api/audit", lambda st, pid, m, q, b: S.audit_log(st, pid, q.get("who"), q.get("q"))),
+    ("POST", r"/api/audit/verify", lambda st, pid, m, q, b: S.verify_audit_trail(st, pid)),
+    ("GET", r"/api/audit/export", lambda st, pid, m, q, b: S.audit_export(st, pid)),
     ("GET", r"/api/tools", lambda st, pid, m, q, b: S.list_tools(st, pid)),
     ("POST", r"/api/tools", lambda st, pid, m, q, b: S.new_tool(st, pid)),
     ("GET", r"/api/tools/(?P<id>[\w-]+)", lambda st, pid, m, q, b: S.get_tool(st, pid, m["id"])),
     ("POST", r"/api/tools/(?P<id>[\w-]+)/actions/(?P<action>\w+)", lambda st, pid, m, q, b: S.tool_action(st, pid, m["id"], m["action"], b.get("input"))),
     ("POST", r"/api/admin/sweep", lambda st, pid, m, q, b: S.reminder_sweep(st, pid)),
     ("POST", r"/api/admin/reset", lambda st, pid, m, q, b: S.reset(st, pid)),
+    ("POST", r"/api/admin/tamper", lambda st, pid, m, q, b: S.tamper(st, pid)),
 ]
 _COMPILED = [(method, re.compile(pattern + r"/?\Z"), fn) for method, pattern, fn in ROUTES]
 

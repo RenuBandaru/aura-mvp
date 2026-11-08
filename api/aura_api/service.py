@@ -20,9 +20,10 @@ from aura_engine.controls import CTL_STATUS
 from aura_engine.forms import FORM_FIELDS, ONGOING_BASIS
 from aura_engine.matching import options_of
 from aura_engine.tools import TOOL_STATUS, next_tool_id
+from aura_engine.jsx import clone
 
 from . import views
-from .store import Store
+from .store import Store, clock_ms
 
 MAX_UPLOAD = 2_000_000  # bytes accepted by the API; the engine applies the real evidence limit
 
@@ -183,6 +184,7 @@ def reset(store: Store, pid: str) -> dict:
     store.reset()
     return {"ok": True}
 
+
 # ---- audit log ----
 
 def audit_log(store: Store, pid: str, who: str | None = None, q: str | None = None) -> dict:
@@ -190,6 +192,33 @@ def audit_log(store: Store, pid: str, who: str | None = None, q: str | None = No
     viewer = person(pid)
     rows = views.filter_audit(views.audit_entries(store.cases, viewer), who, q)
     return {"entries": rows[:views.AUDIT_PAGE], "total": len(rows)}
+
+
+# ---- verify audit trail ----
+
+def verify_audit_trail(store: Store, pid: str) -> dict:
+    """Check the hash chain on every case. JavaScript ``verifyaudit`` (the button handler)."""
+    person(pid)
+    return {"at": clock_ms(), "results": [{"id": c["id"], **E.verify_audit(c)} for c in store.cases]}
+
+
+def audit_export(store: Store, pid: str) -> dict:
+    """The whole Audit log as CSV text. The browser turns it into a file download."""
+    return {"filename": "audit-log.csv", "csv": views.audit_csv(store.cases, person(pid))}
+
+
+def tamper(store: Store, pid: str) -> dict:
+    """Demo only: change one old audit entry without resealing it, so Verify audit trail catches it."""
+    if person(pid)["role"] != "admin":
+        raise EngineError("Only the demo admin can alter the audit trail.")
+    with store.lock:
+        c = clone(store.case("UC-1002") or store.cases[0])
+        i = min(2, len(c["audit"]) - 1)
+        c["audit"][i]["note"] = (c["audit"][i].get("note") or "") + " (edited later)"
+        store.put_case(c)
+        store.save()
+    return {"caseId": c["id"], "entry": i + 1}
+
 
 # ---- AI tool catalog ----
 
