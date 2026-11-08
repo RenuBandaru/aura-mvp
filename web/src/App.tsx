@@ -11,6 +11,7 @@ import { NewSuggestionPage } from './pages/NewSuggestionPage';
 import { ToolsPage, ToolPage } from './pages/ToolsPages';
 import { OutboxPage } from './pages/OutboxPage';
 import { DataPage } from './pages/DataPage';
+import { AuditPage } from './pages/AuditPage';
 
 const START_AS = 'p_dana';
 const remembered = () => { try { return localStorage.getItem('aura.as') || START_AS; } catch { return START_AS; } };
@@ -82,6 +83,7 @@ export function App() {
           {navItem('cases', 'Use cases')}
           {navItem('tools', 'AI tools')}
           {navItem('outbox', 'Outbox')}
+          {navItem('audit', 'Audit log')}
           {(state.me.role === 'admin' || state.me.role === 'lead') && <><div className="sep">Demo</div>{navItem('data', 'Data and demo')}</>}
         </nav>
         <main className="main">{page(route)}</main>
@@ -98,6 +100,7 @@ function page(r: Route) {
     case 'new': return <NewSuggestionPage />;
     case 'tools': return r.id ? <ToolPage id={r.id} /> : <ToolsPage />;
     case 'outbox': return <OutboxPage />;
+    case 'audit': return <AuditPage caseId={r.id} />;
     case 'data': return <DataPage />;
     default: return <QueuePage />;
   }

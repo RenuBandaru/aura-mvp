@@ -82,3 +82,19 @@ export interface CaseDetail {
 }
 
 export interface Mail { ts: number; n?: number; to: string[]; subject: string; body: string; kind?: string; ref: { id: string; title: string } }
+
+/** One row of the Audit log: an audit entry plus its case and the actor's name (GET /api/audit). */
+export interface AuditEntry {
+  ts: number; actor: string; actorName: string; action: string; note?: string;
+  from?: string; to?: string; auto?: boolean; rv?: number; hash?: string;
+  caseId: string; caseTitle: string;
+}
+
+/** GET /api/audit: the first rows that match, newest first, and how many matched in all. */
+export interface AuditPage { entries: AuditEntry[]; total: number }
+
+/** POST /api/audit/verify: the hash chain check on every case, and when it ran. */
+export interface AuditCheck {
+  at: number;
+  results: { id: string; ok: boolean; entries: number; brokenAt?: number; reason?: string }[];
+}
