@@ -1,0 +1,2035 @@
+{
+  "version": 4,
+  "mig3": true,
+  "mig6": true,
+  "ucTypes": [
+    {
+      "id": "vendor",
+      "label": "Using a vendor product or feature"
+    },
+    {
+      "id": "build",
+      "label": "Building something internally (including agents and automations)"
+    },
+    {
+      "id": "model",
+      "label": "Building or training a model"
+    },
+    {
+      "id": "use",
+      "label": "Using an AI tool to analyze, write or research"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_us",
+      "text": "Does it send company data outside the U.S.?",
+      "short": "Data leaves the U.S.",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_enc",
+      "text": "Is any of the data stored or sent unencrypted?",
+      "short": "Unencrypted data",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_hall",
+      "text": "Could the AI produce wrong, invented or biased values that people rely on?",
+      "short": "Wrong or biased outputs possible",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_train",
+      "text": "Is company data used to train models outside the company?",
+      "short": "Data used to train outside models",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_ot",
+      "text": "Can it change how plant equipment or products behave in ways that affect safety?",
+      "short": "Changes safety-affecting behavior",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_pii",
+      "text": "Does it use personal data (PII) such as for customers or employees?",
+      "short": "Uses personally-identifiable data",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_ip",
+      "text": "Does it expose product designs or other proprietary information?",
+      "short": "Exposes proprietary information",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_people",
+      "text": "Does it influence decisions about people?",
+      "short": "Influences decisions about people",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_listed",
+      "text": "Is the AI tool on the company's approved AI tool list?",
+      "short": "On approved tool list",
+      "type": "single",
+      "options": [
+        {
+          "id": "listed",
+          "label": "Yes, it is listed"
+        },
+        {
+          "id": "pending",
+          "label": "Not yet listed, a request is in progress"
+        },
+        {
+          "id": "no",
+          "label": "No"
+        }
+      ],
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_svc",
+      "text": "Which kind of AI service would be used?",
+      "short": "Kind of AI service",
+      "type": "single",
+      "options": [
+        {
+          "id": "co",
+          "label": "A company-approved AI service"
+        },
+        {
+          "id": "pub",
+          "label": "A public AI service"
+        },
+        {
+          "id": "pers",
+          "label": "A personal AI account"
+        },
+        {
+          "id": "na",
+          "label": "No outside AI service (it runs inside company systems)"
+        }
+      ],
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_sens",
+      "text": "What is the most sensitive information the AI will see or that people will enter?",
+      "short": "Most sensitive information",
+      "type": "single",
+      "options": [
+        {
+          "id": "pub",
+          "label": "Public or non-sensitive information only"
+        },
+        {
+          "id": "int",
+          "label": "Internal business information"
+        },
+        {
+          "id": "conf",
+          "label": "Confidential or proprietary information"
+        },
+        {
+          "id": "pers",
+          "label": "Personal or regulated data"
+        }
+      ],
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_share",
+      "text": "Will it share company, customer, employee or partner data with another company?",
+      "short": "Data shared with another company",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_repo",
+      "text": "Will any personal (non-company) AI account be connected to company code repositories?",
+      "short": "Personal AI accounts on code repositories",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_code",
+      "text": "Where will any AI-written or AI-assisted code, scripts or tests be used? For tests, choose what is being tested.",
+      "short": "Where AI-written code or tests are used",
+      "type": "single",
+      "options": [
+        {
+          "id": "none",
+          "label": "No AI-written code or tests"
+        },
+        {
+          "id": "personal",
+          "label": "Personal or team scripts"
+        },
+        {
+          "id": "internal",
+          "label": "Internal business systems"
+        },
+        {
+          "id": "customer",
+          "label": "Customer-facing software"
+        },
+        {
+          "id": "firmware",
+          "label": "Product or plant firmware"
+        }
+      ],
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "src": "type",
+          "in": [
+            "build",
+            "model",
+            "use"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_fw",
+      "text": "Will the AI write, change or test firmware or embedded code that affects safety?",
+      "short": "AI writes or tests safety-affecting firmware",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "src": "q:q_code",
+          "in": [
+            "firmware",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_target",
+      "text": "What does it act on?",
+      "short": "What it acts on",
+      "type": "single",
+      "options": [
+        {
+          "id": "plant",
+          "label": "Plant equipment or products"
+        },
+        {
+          "id": "it",
+          "label": "IT systems"
+        },
+        {
+          "id": "records",
+          "label": "Customer or financial records"
+        },
+        {
+          "id": "na",
+          "label": "None of these"
+        }
+      ],
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "src": "autonomy",
+          "in": [
+            "automate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_model",
+      "text": "Is an AI model central to how this works?",
+      "short": "AI model is central",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "src": "type",
+          "in": [
+            "vendor",
+            "build",
+            "use"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_outside",
+      "text": "Does it read content from outside sources (such as web pages, outside emails or documents), or can people outside the company type to it?",
+      "short": "Reads outside content or takes outside input",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "any": [
+            {
+              "src": "type",
+              "in": [
+                "model"
+              ]
+            },
+            {
+              "src": "q:q_model",
+              "in": [
+                "yes",
+                "unknown"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_tools",
+      "text": "Can it use tools, connectors or credentials to take actions (for example send messages, change records or run code)?",
+      "short": "Uses tools, connectors or credentials",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "any": [
+            {
+              "src": "type",
+              "in": [
+                "model"
+              ]
+            },
+            {
+              "src": "q:q_model",
+              "in": [
+                "yes",
+                "unknown"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_access",
+      "text": "How much company data can it reach?",
+      "short": "Data access scope",
+      "type": "single",
+      "options": [
+        {
+          "id": "lim",
+          "label": "Only the specific rows or datasets it needs"
+        },
+        {
+          "id": "sys",
+          "label": "Whole datasets or systems"
+        },
+        {
+          "id": "broad",
+          "label": "Broad access across several internal data stores"
+        }
+      ],
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_pub",
+      "text": "Will it produce content that is published or used outside the company, including translations?",
+      "short": "Produces content used outside the company",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_rec",
+      "text": "Does it record, transcribe or keep conversations, meetings or personnel data?",
+      "short": "Records or keeps conversations or personnel data",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    },
+    {
+      "id": "q_patent",
+      "text": "Does it touch inventions or patent material?",
+      "short": "Touches inventions or patents",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "src": "q:q_ip",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_trainpii",
+      "text": "Is personal data used to train or tune the model?",
+      "short": "Personal data used to train or tune",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true,
+      "showWhen": [
+        {
+          "src": "type",
+          "in": [
+            "model"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_decide",
+      "text": "Will its outputs be used for decisions with significant financial or operational consequences (for example contract, regulatory or technical specification review)?",
+      "short": "Outputs drive consequential decisions",
+      "type": "yesno",
+      "allowUnknown": true,
+      "enabled": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "g_enc",
+      "kind": "guardrail",
+      "ref": "BR-67",
+      "label": "Unencrypted data",
+      "message": "Data must be encrypted in storage and in transit before this can proceed.",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_enc",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "g_train",
+      "kind": "guardrail",
+      "ref": "BR-02",
+      "label": "Data used to train outside models",
+      "message": "Company data cannot be used to train models outside the company. Use a service that does not train on your data, or remove the data.",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_train",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "g_br01",
+      "kind": "guardrail",
+      "ref": "BR-01",
+      "label": "Sensitive information with a public or personal AI service",
+      "message": "Confidential, personal or unknown-sensitivity information cannot go to a public or personal AI service. Use a company-approved service or remove the information.",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_sens",
+          "in": [
+            "conf",
+            "pers",
+            "unknown"
+          ]
+        },
+        {
+          "src": "q:q_svc",
+          "in": [
+            "pub",
+            "pers",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "g_br03",
+      "kind": "guardrail",
+      "ref": "BR-03",
+      "label": "AI tool not on the approved list",
+      "message": "Use only an AI tool on the company's approved list, or ask for the tool to be added. (This question stands in until the AI tool catalog exists.)",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_listed",
+          "in": [
+            "no",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "g_br04",
+      "kind": "guardrail",
+      "ref": "BR-04",
+      "label": "Personal AI accounts on code repositories",
+      "message": "Disconnect personal AI accounts from company code repositories, or use a company account.",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_repo",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "k_br03",
+      "kind": "condition",
+      "ref": "BR-03",
+      "label": "Add the tool to the approved list",
+      "message": "The tool must be added to the approved AI tool list before pilot.",
+      "clearBy": "pilot",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_listed",
+          "in": [
+            "pending"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_ot",
+      "kind": "require",
+      "ref": "BR-06",
+      "label": "Can change safety-affecting behavior of equipment or products",
+      "control": "c_bounds",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_ot",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_fw",
+      "kind": "require",
+      "ref": "BR-07",
+      "label": "AI writes, changes or tests firmware that affects safety",
+      "control": "c_validate",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_fw",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_target",
+      "kind": "require",
+      "ref": "BR-08",
+      "label": "Acts on its own on systems, equipment or records",
+      "control": "c_rollback",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_target",
+          "in": [
+            "plant",
+            "it",
+            "records",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_auto_kill",
+      "kind": "require",
+      "ref": "BR-08",
+      "label": "Acts on its own",
+      "control": "c_kill",
+      "level": "recommended",
+      "enabled": true,
+      "when": [
+        {
+          "src": "autonomy",
+          "in": [
+            "automate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_auto_log",
+      "kind": "require",
+      "ref": "BR-08",
+      "label": "Acts on its own",
+      "control": "c_log",
+      "level": "recommended",
+      "enabled": true,
+      "when": [
+        {
+          "src": "autonomy",
+          "in": [
+            "automate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_auto_access",
+      "kind": "require",
+      "ref": "BR-08",
+      "label": "Acts on its own",
+      "control": "c_access",
+      "level": "recommended",
+      "enabled": true,
+      "when": [
+        {
+          "src": "autonomy",
+          "in": [
+            "automate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_cust",
+      "kind": "require",
+      "ref": "BR-09",
+      "label": "Customer-facing",
+      "control": "c_escalate",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "scope",
+          "in": [
+            "customer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_share",
+      "kind": "require",
+      "ref": "BR-02",
+      "label": "Shares data with another company",
+      "control": "c_share",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_share",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_human_code",
+      "kind": "require",
+      "ref": "BR-19",
+      "label": "AI-written code or tests for customers or firmware",
+      "control": "c_human",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_code",
+          "in": [
+            "customer",
+            "firmware",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_human_int",
+      "kind": "require",
+      "ref": "BR-19",
+      "label": "AI-written code or tests for internal business systems",
+      "control": "c_human",
+      "level": "recommended",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_code",
+          "in": [
+            "internal"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_human_cust",
+      "kind": "require",
+      "ref": "BR-19",
+      "label": "Customer-facing output",
+      "control": "c_human",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "scope",
+          "in": [
+            "customer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_doc_model",
+      "kind": "require",
+      "ref": "BR-24",
+      "label": "Builds or trains a model",
+      "control": "c_docs",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "type",
+          "in": [
+            "model"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_doc_central",
+      "kind": "require",
+      "ref": "BR-24",
+      "label": "An AI model is central to how it works",
+      "control": "c_docs",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "type",
+          "in": [
+            "vendor",
+            "build",
+            "use"
+          ]
+        },
+        {
+          "src": "q:q_model",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_human_decide",
+      "kind": "require",
+      "ref": "BR-10",
+      "label": "Outputs drive consequential decisions",
+      "control": "c_human",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_decide",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o_ot",
+      "kind": "override",
+      "ref": "BR-06",
+      "label": "Changes safety-affecting behavior",
+      "minTier": "high",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_ot",
+          "in": [
+            "yes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o_people",
+      "kind": "override",
+      "label": "Influences decisions about people",
+      "minTier": "high",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_people",
+          "in": [
+            "yes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o_customer",
+      "kind": "override",
+      "label": "Customer-facing",
+      "minTier": "moderate",
+      "enabled": true,
+      "when": [
+        {
+          "src": "scope",
+          "in": [
+            "customer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "o_auto",
+      "kind": "override",
+      "label": "Acts without a person in the loop",
+      "minTier": "moderate",
+      "enabled": true,
+      "when": [
+        {
+          "src": "autonomy",
+          "in": [
+            "automate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_us",
+      "kind": "points",
+      "label": "Data leaves the U.S.",
+      "points": 2,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_us",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_enc",
+      "kind": "points",
+      "label": "Unencrypted data",
+      "points": 3,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_enc",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_hall",
+      "kind": "points",
+      "label": "Wrong or biased outputs possible",
+      "points": 3,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_hall",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_train",
+      "kind": "points",
+      "label": "Data used to train outside models",
+      "points": 3,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_train",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_ot",
+      "kind": "points",
+      "label": "Changes safety-affecting behavior",
+      "points": 4,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_ot",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_pii",
+      "kind": "points",
+      "label": "Uses personally-identifiable data",
+      "points": 3,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_pii",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_ip",
+      "kind": "points",
+      "label": "Exposes proprietary information",
+      "points": 3,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_ip",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_people",
+      "kind": "points",
+      "label": "Influences decisions about people",
+      "points": 3,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_people",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_decide",
+      "kind": "points",
+      "label": "Outputs drive consequential decisions",
+      "points": 2,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_decide",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_access_broad",
+      "kind": "points",
+      "ref": "BR-14",
+      "label": "Broad access across internal data stores",
+      "points": 2,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_access",
+          "in": [
+            "broad",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_access_sys",
+      "kind": "points",
+      "ref": "BR-14",
+      "label": "Access to whole datasets or systems",
+      "points": 1,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_access",
+          "in": [
+            "sys"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_pub",
+      "kind": "points",
+      "ref": "BR-26",
+      "label": "Produces content used outside the company",
+      "points": 1,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_pub",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_rec",
+      "kind": "points",
+      "ref": "BR-29",
+      "label": "Records or keeps conversations or personnel data",
+      "points": 1,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_rec",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_patent",
+      "kind": "points",
+      "ref": "BR-33",
+      "label": "Touches inventions or patents",
+      "points": 2,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_patent",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_scope_broad",
+      "kind": "require",
+      "ref": "BR-14",
+      "label": "Broad access across internal data stores",
+      "control": "c_scope",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_access",
+          "in": [
+            "broad",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_scope_sys",
+      "kind": "require",
+      "ref": "BR-14",
+      "label": "Access to whole datasets or systems",
+      "control": "c_scope",
+      "level": "recommended",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_access",
+          "in": [
+            "sys"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_minimize",
+      "kind": "require",
+      "ref": "BR-15",
+      "label": "Personal data used to train or tune",
+      "control": "c_minimize",
+      "level": "required",
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_trainpii",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rq_repr",
+      "kind": "require",
+      "ref": "BR-16",
+      "label": "Builds or trains a model",
+      "control": "c_repr",
+      "level": "recommended",
+      "enabled": true,
+      "when": [
+        {
+          "src": "type",
+          "in": [
+            "model"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_code_int",
+      "kind": "points",
+      "ref": "BR-31",
+      "label": "AI-written code or tests in internal business systems",
+      "points": 1,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_code",
+          "in": [
+            "internal"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_code_cust",
+      "kind": "points",
+      "ref": "BR-31",
+      "label": "AI-written code or tests in customer-facing software",
+      "points": 2,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_code",
+          "in": [
+            "customer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_code_fw",
+      "kind": "points",
+      "ref": "BR-31",
+      "label": "AI-written code or tests for product or plant firmware",
+      "points": 3,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_code",
+          "in": [
+            "firmware"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_target_it",
+      "kind": "points",
+      "ref": "BR-37",
+      "label": "Acts on its own on IT systems",
+      "points": 2,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_target",
+          "in": [
+            "it"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pt_target_rec",
+      "kind": "points",
+      "ref": "BR-37",
+      "label": "Acts on its own on customer or financial records",
+      "points": 2,
+      "enabled": true,
+      "when": [
+        {
+          "src": "q:q_target",
+          "in": [
+            "records"
+          ]
+        }
+      ]
+    }
+  ],
+  "scopePoints": {
+    "team": 0,
+    "site": 1,
+    "company": 2,
+    "customer": 3
+  },
+  "autonomyPoints": {
+    "advice": 0,
+    "assist": 1,
+    "automate": 3
+  },
+  "tiers": {
+    "lowMax": 3,
+    "moderateMax": 7,
+    "highMax": 12
+  },
+  "budget": {
+    "perUserMonthly": 200
+  },
+  "controls": [
+    {
+      "id": "c_human",
+      "short": "Human review of outputs",
+      "text": "A qualified person reviews outputs before they are relied on (all, or a sample, depending on risk)",
+      "credit": 3,
+      "enabled": true,
+      "attest": "required"
+    },
+    {
+      "id": "c_test",
+      "short": "Tested before launch",
+      "text": "Accuracy tested on real examples before launch",
+      "credit": 2,
+      "enabled": true,
+      "attest": "required"
+    },
+    {
+      "id": "c_access",
+      "short": "Role-based access",
+      "text": "Role-based access to the tool and its data",
+      "credit": 2,
+      "enabled": true,
+      "attest": "optional"
+    },
+    {
+      "id": "c_log",
+      "short": "Inputs and outputs logged",
+      "text": "Inputs and outputs are logged",
+      "credit": 1,
+      "enabled": true,
+      "attest": "optional"
+    },
+    {
+      "id": "c_kill",
+      "applies": [
+        {
+          "src": "autonomy",
+          "in": [
+            "automate"
+          ]
+        }
+      ],
+      "short": "Switch-off within an hour",
+      "text": "Can be switched off within an hour",
+      "credit": 1,
+      "enabled": true,
+      "attest": "optional"
+    },
+    {
+      "id": "c_bounds",
+      "applies": [
+        {
+          "src": "q:q_ot",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ],
+      "short": "Fixed limits outside the AI",
+      "text": "Its limits are fixed and enforced outside the AI, and safety-critical decisions stay with a person",
+      "credit": 3,
+      "enabled": true,
+      "attest": "required"
+    },
+    {
+      "id": "c_validate",
+      "applies": [
+        {
+          "src": "q:q_fw",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ],
+      "short": "Independent validation",
+      "text": "Independent validation before release, such as the external UL certification gate",
+      "credit": 3,
+      "enabled": true,
+      "attest": "required"
+    },
+    {
+      "id": "c_rollback",
+      "applies": [
+        {
+          "src": "q:q_target",
+          "in": [
+            "plant",
+            "it",
+            "records",
+            "unknown"
+          ]
+        }
+      ],
+      "short": "Backup or rollback",
+      "text": "Backup and restore, or rollback, is in place for what it acts on",
+      "credit": 2,
+      "enabled": true,
+      "attest": "required"
+    },
+    {
+      "id": "c_escalate",
+      "applies": [
+        {
+          "src": "scope",
+          "in": [
+            "customer"
+          ]
+        }
+      ],
+      "short": "Approved topics, human escalation",
+      "text": "Answers are limited to approved topics, and customers can reach a person",
+      "credit": 3,
+      "enabled": true,
+      "attest": "required"
+    },
+    {
+      "id": "c_docs",
+      "short": "Model documented",
+      "text": "The model is documented: its data sources, training process, behavior, limitations and decision logic, available to authorized personnel for audit",
+      "credit": 1,
+      "enabled": true,
+      "attest": "optional"
+    },
+    {
+      "id": "c_scope",
+      "applies": [
+        {
+          "src": "q:q_access",
+          "in": [
+            "sys",
+            "broad",
+            "unknown"
+          ]
+        }
+      ],
+      "short": "Data access scoped",
+      "text": "Data access is scoped to the datasets or rows it needs, and totals, margins and employee data are blocked unless approved",
+      "credit": 2,
+      "enabled": true,
+      "attest": "optional"
+    },
+    {
+      "id": "c_minimize",
+      "applies": [
+        {
+          "src": "q:q_trainpii",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ],
+      "short": "Training data minimized",
+      "text": "Personal data used to train or tune is justified, minimized and anonymized where possible",
+      "credit": 1,
+      "enabled": true,
+      "attest": "optional"
+    },
+    {
+      "id": "c_repr",
+      "applies": [
+        {
+          "src": "type",
+          "in": [
+            "model"
+          ]
+        }
+      ],
+      "short": "Training data representative",
+      "text": "The training data is representative and balanced for how the model will be used",
+      "credit": 1,
+      "enabled": true,
+      "attest": "optional"
+    },
+    {
+      "id": "c_share",
+      "applies": [
+        {
+          "src": "q:q_share",
+          "in": [
+            "yes",
+            "unknown"
+          ]
+        }
+      ],
+      "short": "Data sharing approved",
+      "text": "An authorized person approved the data sharing (a contract, or the approver's written reason, as evidence)",
+      "credit": 2,
+      "enabled": true,
+      "attest": "required"
+    }
+  ],
+  "readiness": [
+    {
+      "id": "r_access",
+      "text": "The data is accessible to the team",
+      "enabled": true
+    },
+    {
+      "id": "r_steward",
+      "text": "A named data steward exists",
+      "enabled": true
+    },
+    {
+      "id": "r_meta",
+      "text": "Definitions and metadata are complete",
+      "enabled": true
+    },
+    {
+      "id": "r_quality",
+      "text": "Data quality has been checked",
+      "enabled": true
+    }
+  ],
+  "minReady": 2,
+  "deadlines": {
+    "vetting": {
+      "low": 2,
+      "moderate": 3,
+      "high": 3,
+      "critical": 3
+    },
+    "panel": {
+      "low": 5,
+      "moderate": 7,
+      "high": 10,
+      "critical": 14
+    },
+    "consult": {
+      "low": 3,
+      "moderate": 4,
+      "high": 5,
+      "critical": 5
+    },
+    "exec": {
+      "low": 7,
+      "moderate": 7,
+      "high": 7,
+      "critical": 7
+    }
+  },
+  "pilotDays": {
+    "low": 14,
+    "moderate": 30,
+    "high": 45,
+    "critical": 60
+  },
+  "reviewCadenceDays": {
+    "low": 365,
+    "moderate": 180,
+    "high": 90,
+    "critical": 60
+  },
+  "reviewMaxDays": {
+    "low": 1095,
+    "moderate": 1095,
+    "high": 1095,
+    "critical": 1095
+  },
+  "goals": {
+    "avgDays": {
+      "on": true,
+      "value": 30
+    },
+    "reachProd": {
+      "on": true,
+      "value": 60
+    },
+    "sentBack": {
+      "on": true,
+      "value": 30
+    },
+    "overdue": {
+      "on": true,
+      "value": 25
+    },
+    "value": {
+      "on": true,
+      "value": 500
+    }
+  },
+  "quorum": {
+    "moderate": 2,
+    "high": 3,
+    "critical": 3
+  },
+  "execQuorum": 3,
+  "units": [
+    {
+      "id": "u_ops",
+      "label": "Plant operations and manufacturing",
+      "adviserId": "p_jordan"
+    },
+    {
+      "id": "u_eng",
+      "label": "Engineering and product development",
+      "adviserId": "p_noor"
+    },
+    {
+      "id": "u_cs",
+      "label": "Customer service and sales",
+      "adviserId": "p_grant"
+    },
+    {
+      "id": "u_corp",
+      "label": "Finance, HR and IT",
+      "adviserId": "p_jordan"
+    },
+    {
+      "id": "u_legal",
+      "label": "Legal and compliance",
+      "adviserId": "p_elena"
+    }
+  ],
+  "consultAreas": [
+    {
+      "id": "ca_cyber",
+      "label": "Cybersecurity",
+      "personId": "p_ravi",
+      "enabled": true,
+      "question": "Please assess the security of this use case: what it connects to, what data it handles and how that is protected.",
+      "triggers": [
+        {
+          "label": "Acts on its own on IT systems",
+          "level": "required",
+          "when": [
+            {
+              "src": "q:q_target",
+              "in": [
+                "it"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Internal build, data sharing, tools or connectors, or broad data access",
+          "level": "recommended",
+          "when": [
+            {
+              "any": [
+                {
+                  "src": "type",
+                  "in": [
+                    "build"
+                  ]
+                },
+                {
+                  "src": "q:q_share",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_tools",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_access",
+                  "in": [
+                    "broad",
+                    "unknown"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ca_legal",
+      "label": "Legal",
+      "personId": "p_claire",
+      "enabled": true,
+      "question": "Please advise on legal and regulatory points: contracts, regulation, intellectual property and external content. Where data would be shared outside the company, please verify that consent to share it has been given.",
+      "triggers": [
+        {
+          "label": "Data would be shared outside the company",
+          "level": "required",
+          "when": [
+            {
+              "src": "q:q_share",
+              "in": [
+                "yes",
+                "unknown"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Customer-facing, vendor product, outside content or patents",
+          "level": "recommended",
+          "when": [
+            {
+              "any": [
+                {
+                  "src": "scope",
+                  "in": [
+                    "customer"
+                  ]
+                },
+                {
+                  "src": "type",
+                  "in": [
+                    "vendor"
+                  ]
+                },
+                {
+                  "src": "q:q_pub",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_patent",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ca_it",
+      "label": "IT standards",
+      "personId": "p_mei",
+      "enabled": true,
+      "question": "Please say whether this purchased or built application fits IT standards and the approved tool list.",
+      "triggers": [
+        {
+          "label": "A purchased or built application not yet on the approved AI tool list",
+          "level": "recommended",
+          "when": [
+            {
+              "src": "type",
+              "in": [
+                "vendor",
+                "build"
+              ]
+            },
+            {
+              "src": "q:q_listed",
+              "in": [
+                "pending"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ca_data",
+      "label": "Data steward",
+      "personId": "p_omar",
+      "enabled": true,
+      "baseline": true,
+      "question": "Please check where the data originates, where it is processed, whether it leaves company-controlled environments, who else has access, and what sensitive data is involved.",
+      "triggers": [
+        {
+          "label": "Personal data, proprietary information, confidential or personal data level, or data leaving the U.S.",
+          "level": "required",
+          "when": [
+            {
+              "any": [
+                {
+                  "src": "q:q_pii",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_ip",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_sens",
+                  "in": [
+                    "conf",
+                    "pers",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_us",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ca_ai",
+      "label": "AI safety",
+      "personId": "p_mina",
+      "enabled": true,
+      "question": "Please assess AI-specific risks such as prompt injection, misuse, wrong or invented outputs, and bias.",
+      "triggers": [
+        {
+          "label": "Outside content together with a way to act",
+          "level": "required",
+          "when": [
+            {
+              "src": "q:q_outside",
+              "in": [
+                "yes",
+                "unknown"
+              ]
+            },
+            {
+              "any": [
+                {
+                  "src": "q:q_tools",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_target",
+                  "in": [
+                    "plant",
+                    "it",
+                    "records",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "autonomy",
+                  "in": [
+                    "automate"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Unreliable output with consequences",
+          "level": "recommended",
+          "when": [
+            {
+              "src": "q:q_hall",
+              "in": [
+                "yes",
+                "unknown"
+              ]
+            },
+            {
+              "any": [
+                {
+                  "src": "autonomy",
+                  "in": [
+                    "automate"
+                  ]
+                },
+                {
+                  "src": "q:q_target",
+                  "in": [
+                    "plant",
+                    "it",
+                    "records",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_decide",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_people",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Customer-facing and either automatic or possibly wrong",
+          "level": "recommended",
+          "when": [
+            {
+              "src": "scope",
+              "in": [
+                "customer"
+              ]
+            },
+            {
+              "any": [
+                {
+                  "src": "autonomy",
+                  "in": [
+                    "automate"
+                  ]
+                },
+                {
+                  "src": "q:q_hall",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Tools or connectors that run automatically",
+          "level": "recommended",
+          "when": [
+            {
+              "src": "q:q_tools",
+              "in": [
+                "yes",
+                "unknown"
+              ]
+            },
+            {
+              "src": "autonomy",
+              "in": [
+                "automate"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "An internal build with a central AI model and reach",
+          "level": "recommended",
+          "when": [
+            {
+              "src": "type",
+              "in": [
+                "build"
+              ]
+            },
+            {
+              "src": "q:q_model",
+              "in": [
+                "yes",
+                "unknown"
+              ]
+            },
+            {
+              "any": [
+                {
+                  "src": "q:q_tools",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "autonomy",
+                  "in": [
+                    "automate"
+                  ]
+                },
+                {
+                  "src": "scope",
+                  "in": [
+                    "customer"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "A model-building case with reach",
+          "level": "recommended",
+          "when": [
+            {
+              "src": "type",
+              "in": [
+                "model"
+              ]
+            },
+            {
+              "any": [
+                {
+                  "src": "q:q_tools",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "autonomy",
+                  "in": [
+                    "automate"
+                  ]
+                },
+                {
+                  "src": "scope",
+                  "in": [
+                    "customer"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ca_ops",
+      "label": "Operations",
+      "personId": "p_jack",
+      "enabled": true,
+      "question": "Please assess the effect on plant and field operations, and whether the process owners can run it safely.",
+      "triggers": [
+        {
+          "label": "Can affect plant equipment or products",
+          "level": "recommended",
+          "when": [
+            {
+              "any": [
+                {
+                  "src": "q:q_ot",
+                  "in": [
+                    "yes",
+                    "unknown"
+                  ]
+                },
+                {
+                  "src": "q:q_target",
+                  "in": [
+                    "plant"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "trainings": [
+    {
+      "id": "t_intro",
+      "title": "AI at BWC: introduction and policy",
+      "link": "https://example.com/training/ai-intro",
+      "summary": "What AI can and cannot do, the AI policy, approved tools and how to get a new use approved.",
+      "refreshMonths": 12,
+      "version": "2026.1",
+      "requiredToSubmit": true,
+      "contact": "ai-training@example.com",
+      "appliesTo": "all"
+    },
+    {
+      "id": "t_safe",
+      "title": "Using AI safely with company data",
+      "link": "https://example.com/training/ai-safe",
+      "summary": "Handling sensitive and personal data, prompts, and outputs you rely on.",
+      "refreshMonths": 12,
+      "version": "2026.1",
+      "requiredToSubmit": false,
+      "contact": "ai-training@example.com",
+      "appliesTo": "all"
+    }
+  ]
+}
