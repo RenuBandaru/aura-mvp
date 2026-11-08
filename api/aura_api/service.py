@@ -183,6 +183,13 @@ def reset(store: Store, pid: str) -> dict:
     store.reset()
     return {"ok": True}
 
+# ---- audit log ----
+
+def audit_log(store: Store, pid: str, who: str | None = None, q: str | None = None) -> dict:
+    """The Audit log page: entries newest first, filtered, plus how many matched in all."""
+    viewer = person(pid)
+    rows = views.filter_audit(views.audit_entries(store.cases, viewer), who, q)
+    return {"entries": rows[:views.AUDIT_PAGE], "total": len(rows)}
 
 # ---- AI tool catalog ----
 

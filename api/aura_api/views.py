@@ -240,3 +240,37 @@ def submit_gaps(form: dict, rules: dict) -> dict:
     return {"questions": [{"id": q["id"], "text": q["text"]} for q in g["questions"]],
             "readiness": [{"id": r["id"], "text": r["text"]} for r in g["readiness"]], "fields": fields,
             "count": len(g["questions"]) + len(g["readiness"]) + len(fields)}
+
+# ---- Audit Log ----
+
+def audit_entries(cases: list[dict], viewer: dict) -> list[dict]:
+    """Every audit entry from every case, newest first, as this person may see it.
+    JavaScript ``vAudit`` (the part before filtering)."""
+
+    rows = []
+    for c in cases:
+        for e in c.get("audit") or []:
+            e = mask_log(e,viewer)
+            actor = constants.by_id(e.get("actor")) if e.get("actor") else None
+            rows.append({**e,"caseId": c["id"], "caseTitle": c["title"],
+                         "actorName": actor["name"] if actor else "" })
+    return sorted(rows, key=lambda r: r["ts"], reverse=True)
+
+AUDIT_PAGE = 250  # rows shown on the page; the CSV export has every row
+
+
+def filter_audit(rows: list[dict], who: str | None, q: str | None) -> list[dict]:
+    """The Audit log filters. ``who`` is ``auto``, a case id or a person id.
+    ``q`` searches the action, detail, case title and case id, ignoring case.
+    JavaScript ``vAudit`` (the filter lines)."""
+    if who == "auto":
+        rows = [r for r in rows if r.get("auto")]
+    elif who and who.startswith("UC-"):
+        rows = [r for r in rows if r["caseId"] == who]
+    elif who and who != "all":
+        rows = [r for r in rows if r.get("actor") == who]
+    if q:
+        needle = q.lower()
+        rows = [r for r in rows if needle in ((r.get("action") or "") + (r.get("note") or "")
+                                              + r["caseTitle"] + r["caseId"]).lower()]
+    return rows

@@ -113,3 +113,10 @@ def test_sweep_and_reset_are_restricted(api):
 def test_outbox_filters_by_person(api):
     _, mails = api("GET", "/api/outbox", who="p_grant")
     assert mails and all("p_grant" in m["to"] for m in mails)
+
+def test_audit_log_is_newest_first_and_filters_by_case(api):
+    status, out = api("GET", "/api/audit", who="UC-1012")
+    assert status == 200 and out["total"] == len(out["entries"]) > 0
+    assert {e["caseId"] for e in out["entries"]} == {"UC-1012"}
+    times = [e["ts"] for e in out["entries"]]
+    assert times == sorted(times, reverse=True)

@@ -16,6 +16,7 @@ except ``GET /api/bootstrap``)::
     GET  /api/similar?text=...&exclude=UC-1001   look-alike tools and cases
     GET  /api/outbox?who=p_dana                  simulated emails
     GET  /api/files/{id}                         an uploaded evidence file
+    GET  /api/audit?who=p_sam&q=vote             the audit log, newest first (who: auto, a case or a person)
     GET  /api/tools                              the AI tool catalog
     POST /api/tools                              start reporting a tool (a private draft)
     GET  /api/tools/{id}                         one tool
@@ -55,6 +56,7 @@ ROUTES = [
     ("GET", r"/api/similar", lambda st, pid, m, q, b: S.similar(st, pid, q.get("text", ""), q.get("exclude"))),
     ("GET", r"/api/outbox", lambda st, pid, m, q, b: S.outbox(st, pid, q.get("who"))),
     ("GET", r"/api/files/(?P<id>[\w-]+)", lambda st, pid, m, q, b: S.file_content(st, pid, m["id"])),
+    ("GET", r"/api/audit", lambda st, pid, m, q, b: S.audit_log(st, pid, q.get("who"), q.get("q"))),
     ("GET", r"/api/tools", lambda st, pid, m, q, b: S.list_tools(st, pid)),
     ("POST", r"/api/tools", lambda st, pid, m, q, b: S.new_tool(st, pid)),
     ("GET", r"/api/tools/(?P<id>[\w-]+)", lambda st, pid, m, q, b: S.get_tool(st, pid, m["id"])),
