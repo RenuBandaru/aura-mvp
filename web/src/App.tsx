@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { get, setActingAs } from './api';
 import { AppContext, AppState, go, parseHash, Route } from './state';
-import type { Bootstrap, QueueItem } from './types';
+import type { Bootstrap, QueueItem, TrainingPageData } from './types';
 import { QueuePage } from './pages/QueuePage';
 import { CasesPage } from './pages/CasesPage';
 import { CasePage } from './pages/CasePage';
@@ -12,6 +12,7 @@ import { ToolsPage, ToolPage } from './pages/ToolsPages';
 import { OutboxPage } from './pages/OutboxPage';
 import { DataPage } from './pages/DataPage';
 import { AuditPage } from './pages/AuditPage';
+import { TrainingPage } from './pages/TrainingPage';
 
 const START_AS = 'p_dana';
 const remembered = () => { try { return localStorage.getItem('aura.as') || START_AS; } catch { return START_AS; } };
@@ -24,6 +25,7 @@ export function App() {
   const [version, setVersion] = useState(0);
   const [toastMsg, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
   const [queueCount, setQueueCount] = useState(0);
+  const [trainingDue, setTrainingDue] = useState(0);
 
   useEffect(() => {
     get<Bootstrap>('/bootstrap').then(setBoot).catch(() => setFailed('Cannot reach the AURA API. Is "python api/dev_server.py" running?'));
@@ -37,6 +39,7 @@ export function App() {
   useEffect(() => {
     if (!boot) return;
     get<{ items: QueueItem[] }>('/queue').then(q => setQueueCount(q.items.length)).catch(() => setQueueCount(0));
+    get<TrainingPageData>('/training').then(t => setTrainingDue(t.dueCount)).catch(() => setTrainingDue(0));
   }, [boot, asId, version]);
 
   const toast = useCallback((text: string, bad?: boolean) => {
@@ -82,6 +85,7 @@ export function App() {
           {navItem('queue', 'Your queue', queueCount)}
           {navItem('cases', 'Use cases')}
           {navItem('tools', 'AI tools')}
+          {state.me.role !== 'admin' && navItem('training', 'Training', trainingDue)}
           {navItem('outbox', 'Outbox')}
           {navItem('audit', 'Audit log')}
           {(state.me.role === 'admin' || state.me.role === 'lead') && <><div className="sep">Demo</div>{navItem('data', 'Data and demo')}</>}
@@ -101,6 +105,7 @@ function page(r: Route) {
     case 'tools': return r.id ? <ToolPage id={r.id} /> : <ToolsPage />;
     case 'outbox': return <OutboxPage />;
     case 'audit': return <AuditPage caseId={r.id} />;
+    case 'training': return <TrainingPage />;
     case 'data': return <DataPage />;
     default: return <QueuePage />;
   }

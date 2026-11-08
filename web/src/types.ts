@@ -98,3 +98,25 @@ export interface AuditCheck {
   at: number;
   results: { id: string; ok: boolean; entries: number; brokenAt?: number; reason?: string }[];
 }
+
+/** A course's state for one person. JavaScript trainingState. */
+export type TrainingState = 'current' | 'soon' | 'due' | 'overdue';
+
+/** One course as the person acting sees it. */
+export interface TrainingCard {
+  id: string; title: string; summary?: string; link?: string; contact?: string;
+  refreshMonths: number; version?: string; requiredToSubmit?: boolean;
+  state: TrainingState; completedAt: number | null; completedVersion: string | null; validUntil: number | null;
+}
+
+/** GET /api/training: my courses, and for the lead, auditor and admin, everyone's. */
+export interface TrainingPageData {
+  mine: TrainingCard[];
+  dueCount: number;
+  canMark: boolean;
+  canRemind: boolean;
+  matrix: null | {
+    trainings: { id: string; title: string }[];
+    rows: { id: string; name: string; title: string; unit: string; states: Record<string, TrainingState | null> }[];
+  };
+}
