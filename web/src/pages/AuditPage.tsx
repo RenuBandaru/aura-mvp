@@ -4,7 +4,7 @@
 // the hash chain). This page only keeps track of the filters the person picked and shows the answers.
 
 import { useEffect, useState } from 'react';
-import { get, post } from '../api';
+import { downloadCsv, get, post } from '../api';
 import { go, useApp } from '../state';
 import type { AuditCheck, AuditPage as AuditPageData } from '../types';
 import { PageHead, useLoad } from '../components/bits';
@@ -42,14 +42,7 @@ export function AuditPage({ caseId }: { caseId?: string }) {
   };
 
   const exportCsv = async () => {
-    try {
-      const { filename, csv } = await get<{ filename: string; csv: string }>('/audit/export');
-      // Turn the text into a file the browser downloads: a Blob, a temporary link to it, and a click.
-      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
-    } catch (e: any) { toast(e.message, true); }
+    try { await downloadCsv('/audit/export'); } catch (e: any) { toast(e.message, true); }
   };
 
   const people = boot.people.filter(p => p.role !== 'admin');

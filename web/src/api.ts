@@ -20,3 +20,13 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Pr
 
 export const get = <T,>(path: string) => call<T>('GET', path);
 export const post = <T,>(path: string, body: unknown = {}) => call<T>('POST', path, body);
+
+/** Ask the API for a CSV export ({filename, csv}) and save it as a file in the browser. */
+export async function downloadCsv(path: string): Promise<void> {
+  const { filename, csv } = await get<{ filename: string; csv: string }>(path);
+  // A Blob holds the text, a temporary link points at it, and clicking the link saves it.
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}

@@ -13,6 +13,7 @@ import { OutboxPage } from './pages/OutboxPage';
 import { DataPage } from './pages/DataPage';
 import { AuditPage } from './pages/AuditPage';
 import { TrainingPage } from './pages/TrainingPage';
+import { DashboardPage } from './pages/DashboardPage';
 
 const START_AS = 'p_dana';
 const remembered = () => { try { return localStorage.getItem('aura.as') || START_AS; } catch { return START_AS; } };
@@ -83,6 +84,7 @@ export function App() {
         <nav className="nav" aria-label="Main">
           {canCreate && <button className="btn accent" style={{ marginBottom: 10 }} onClick={() => go('new')}>+ New suggestion</button>}
           {navItem('queue', 'Your queue', queueCount)}
+          {navItem('dash', 'Dashboard')}
           {navItem('cases', 'Use cases')}
           {navItem('tools', 'AI tools')}
           {state.me.role !== 'admin' && navItem('training', 'Training', trainingDue)}
@@ -106,6 +108,7 @@ function page(r: Route) {
     case 'outbox': return <OutboxPage />;
     case 'audit': return <AuditPage caseId={r.id} />;
     case 'training': return <TrainingPage />;
+    case 'dash': return <DashboardPage />;
     case 'data': return <DataPage />;
     default: return <QueuePage />;
   }

@@ -14,6 +14,10 @@ from datetime import datetime, timezone
 
 import aura_engine as E
 from aura_engine import constants, controls, matching, people, review
+from aura_engine.derived import EXC_KINDS
+from aura_engine.rules import GOAL_DEFS, goal_met
+from aura_engine.derived import EXC_KINDS
+from aura_engine.rules import GOAL_DEFS, goal_met
 from aura_engine.jsx import short_date
 from aura_engine.tools import TOOL_STATUS
 
@@ -336,3 +340,160 @@ def training_page(rules: dict, training: dict, person: dict, now: int) -> dict:
                                  for t in trainings}}
                      for p in training_people()]}
     return out
+
+
+# ---- dashboard ----
+
+EXC_PERIODS = [[30, "Last 30 days"], [90, "Last 90 days"], [180, "Last 180 days"], [365, "Last year"], [0, "All time"]]
+_REMEDIATED_AT = [("Triage", "Triage"), ("Vetting", "Vetting"), ("Panel", "Panel"), ("Executive", "Executives")]
+_REJECTED_AT = {"panel": "panel review", "exec": "executive review", "pilot": "pilot review"}
+
+
+def _late(c: dict, now: int) -> bool:
+    """Past its due date and not closed. JavaScript ``isLate``."""
+    return bool(c.get("dueAt")) and c["stage"] != "closed" and c["dueAt"] < now
+
+
+def dashboard_stats(cases: list[dict], now: int) -> dict:
+    """The headline figures. JavaScript ``stat``."""
+    open_ = [c for c in cases if c["stage"] not in ("closed", "production")]
+    overdue = [c for c in cases if _late(c, now)]
+    done = []
+    for c in cases:  # days from logging to the first time the case reached production or was closed
+        e = next((a for a in c.get("audit") or [] if a.get("to") in ("production", "closed")), None)
+        if e:
+            done.append((e["ts"] - c["createdAt"]) / constants.DAY)
+    prod = sum(c["stage"] == "production" for c in cases)
+    rej = sum(c["stage"] == "closed" for c in cases)
+    submitted = sum(any(a.get("action") == "Submitted for triage" for a in c.get("audit") or []) for c in cases)
+    returned = sum(any(a.get("tag") == "remediate" for a in c.get("audit") or []) for c in cases)
+    sent_back: dict = {}
+    for c in cases:
+        for a in c.get("audit") or []:
+            if a.get("tag") == "remediate":
+                k = next((label for prefix, label in _REMEDIATED_AT if (a.get("action") or "").startswith(prefix)), "Monitoring")
+                sent_back[k] = sent_back.get(k, 0) + 1
+    value = sum(_num(c.get("form", {}).get("valueUSD")) for c in cases if c["stage"] in ("pilot", "production"))
+    return {
+        "open": len(open_), "overdue": len(overdue), "overduePct": len(overdue) / len(open_) * 100 if open_ else 0,
+        "avgDays": sum(done) / len(done) if done else 0, "prod": prod, "rejected": rej,
+        "reachProdPct": prod / (prod + rej) * 100 if prod + rej else 0, "sentBackPct": returned / submitted * 100 if submitted else 0,
+        "sentBackAt": sent_back, "valueTotal": value,
+        "inReview": sum(c["stage"] in ("vetting", "panel", "exec", "pilot") for c in cases),
+        "alerts": sum(bool(E.measure_flags(c) or E.acceptance_expired(c, now)) for c in cases),
+    }
+
+
+def _num(v) -> float:
+    """JavaScript ``+v || 0``: a number, or 0 for blanks and text."""
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        return 0
+    return 0 if n != n else n  # NaN counts as 0
+
+
+def _goal(rules: dict, goal_id: str, actual: float, has_data: bool) -> dict | None:
+    """A goal next to a figure, and whether the figure meets it. JavaScript ``goalChip`` and ``goalCls``."""
+    d = next((x for x in GOAL_DEFS if x["id"] == goal_id), None)
+    g = (rules.get("goals") or {}).get(goal_id)
+    if not d or not g or not g.get("on"):
+        return None
+    v = g["value"]
+    text = f"{v} days" if goal_id == "avgDays" else _money_short(float(v) * 1000) if goal_id == "value" else f"{v}%"
+    met = goal_met(d, round(actual), float(v)) if has_data else None
+    return {"text": text, "met": met}
+
+
+def _money_short(n: float) -> str:
+    """$1.2M, $340K or $900. JavaScript ``moneyShort``."""
+    if n >= 1e6:
+        return "$" + f"{n / 1e6:.1f}".removesuffix(".0") + "M"
+    return "$" + str(round(n / 1e3)) + "K" if n >= 1e3 else "$" + str(round(n))
+
+
+def alert_rows(cases: list[dict], now: int) -> list[dict]:
+    """Cases past a KPI stop limit or with an expired approval. JavaScript ``alertsCard``."""
+    rows = []
+    for c in cases:
+        items = [f"Stop limit passed: {r['m']['name']} (latest result {r['value']}, "
+                 f"{'above' if r['m'].get('dir') == 'lower' else 'below'} the limit of {r['m']['stop']})" for r in E.measure_flags(c)]
+        if E.acceptance_expired(c, now):
+            items.append("Approval expired " + short_date(c["acceptance"]["validUntil"]))
+        if items:
+            rows.append({"id": c["id"], "title": c["title"], "stageLabel": constants.STAGE_LABEL[c["stage"]],
+                         "tier": c.get("tier"), "tierLabel": constants.TIER_LABEL.get(c.get("tier") or "", ""), "items": items})
+    return rows
+
+
+def training_summary(rules: dict, training: dict, now: int) -> list[dict]:
+    """Completion per course across everyone it applies to. JavaScript ``trainingCard``."""
+    out = []
+    for t in rules.get("trainings") or []:
+        states = [people.training_state(training, p["id"], t, now) for p in training_people() if people.training_applies(t, p)]
+        out.append({"id": t["id"], "title": t["title"], "requiredToSubmit": bool(t.get("requiredToSubmit")), "applies": len(states),
+                    "ok": sum(s in ("current", "soon") for s in states), "soon": states.count("soon"),
+                    "notDone": sum(s in ("due", "overdue") for s in states)})
+    return out
+
+
+def dashboard(data: dict, viewer: dict, now: int, ex_days: int = 180) -> dict:
+    """Everything the Dashboard shows. JavaScript ``vDash``."""
+    cases, rules = data["cases"], data["rules"]
+    st = dashboard_stats(cases, now)
+    by_id = {c["id"]: c for c in cases}
+
+    pipeline = []
+    for s in constants.STAGES:
+        here = [c for c in cases if c["stage"] == s]
+        tiers = {t: sum((c.get("tier") or "none") == t for c in here) for t in ("low", "moderate", "high", "critical", "none")}
+        pipeline.append({"stage": s, "label": constants.STAGE_LABEL[s], "total": len(here), "tiers": tiers})
+
+    rejected: dict = {}
+    for c in cases:
+        if c["stage"] == "closed":
+            k = (c.get("closed") or {}).get("from") or "other"
+            rejected[k] = rejected.get(k, 0) + 1
+
+    late = sorted([c for c in cases if c["stage"] != "closed" and c.get("dueAt") and c["dueAt"] < now], key=lambda c: c["dueAt"])[:6]
+    since = now - ex_days * constants.DAY if ex_days else 0
+    exceptions = [{**r, "cases": [{"id": i, "title": by_id[i]["title"], "stageLabel": constants.STAGE_LABEL[by_id[i]["stage"]],
+                                   "tier": by_id[i].get("tier"), "tierLabel": constants.TIER_LABEL.get(by_id[i].get("tier") or "", "")}
+                                  for i in r["cases"] if i in by_id]}
+                  for r in E.exception_data(cases, since, rules)]
+
+    return {
+        "kpis": {
+            "open": st["open"], "inReview": st["inReview"], "alerts": st["alerts"],
+            "overdue": {"count": st["overdue"], "pct": round(st["overduePct"]), "goal": _goal(rules, "overdue", st["overduePct"], st["open"] > 0)},
+            "avgDays": {"value": round(st["avgDays"]) if st["avgDays"] else None, "goal": _goal(rules, "avgDays", st["avgDays"], st["avgDays"] > 0)},
+            "reachProd": {"pct": round(st["reachProdPct"]), "goal": _goal(rules, "reachProd", st["reachProdPct"], st["prod"] + st["rejected"] > 0)},
+            "sentBack": {"pct": round(st["sentBackPct"]), "goal": _goal(rules, "sentBack", st["sentBackPct"], True)},
+            "value": {"text": _money_short(st["valueTotal"]), "goal": _goal(rules, "value", st["valueTotal"] / 1000, True)},
+        },
+        "pipeline": pipeline,
+        "sentBackAt": [{"label": k, "count": n} for k, n in sorted(st["sentBackAt"].items(), key=lambda kv: -kv[1])],
+        "rejected": [{"label": _REJECTED_AT.get(k, k), "count": n} for k, n in rejected.items()],
+        "mostOverdue": [{"id": c["id"], "title": c["title"], "stageLabel": constants.STAGE_LABEL[c["stage"]],
+                         "daysOverdue": max(1, (now - c["dueAt"]) // constants.DAY), "dueAt": c["dueAt"]} for c in late],
+        "recent": audit_entries(cases, viewer)[:8],
+        "alerts": alert_rows(cases, now),
+        "exceptions": {"days": ex_days, "periods": EXC_PERIODS, "kinds": EXC_KINDS, "rows": exceptions},
+        "training": training_summary(rules, data["meta"].get("training") or {}, now) if viewer["role"] in TRAINING_MANAGERS else None,
+    }
+
+
+def cases_csv(cases: list[dict], now: int) -> str:
+    """Every case as CSV, by id. JavaScript ``casesCsv``."""
+    def day(ms):
+        return datetime.fromtimestamp(ms / 1000, timezone.utc).strftime("%Y-%m-%d") if ms else ""
+    rows = [["ID", "Title", "Proposed solution", "Stage", "Tier", "Inherent risk", "Residual risk", "Submitter", "Owner", "Sponsor",
+             "Annual value USD", "Cost USD", "Logged", "Due", "Days in stage", "Approval valid until", "Stop limits passed"]]
+    for c in sorted(cases, key=lambda c: c["id"]):
+        f, sc = c.get("form") or {}, c.get("scoring")
+        rows.append([c["id"], c["title"], f.get("solution") or "", constants.STAGE_LABEL[c["stage"]],
+                     constants.TIER_LABEL[c["tier"]] if c.get("tier") else "", sc["inherent"] if sc else "", sc["residual"] if sc else "",
+                     constants.by_id(c.get("submitterId"))["name"], f.get("owner"), f.get("sponsor"), f.get("valueUSD"), f.get("costUSD"),
+                     day(c["createdAt"]), day(c.get("dueAt")), max(0, (now - c["stageSince"]) // constants.DAY),
+                     day((c.get("acceptance") or {}).get("validUntil")), "; ".join(r["m"]["name"] for r in E.measure_flags(c))])
+    return E.to_csv(rows)
