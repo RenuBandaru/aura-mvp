@@ -62,6 +62,7 @@ p { margin: 0; } a { color: var(--brand); }
 
 /* Buttons, chips and callouts */
 .btn { border: 1px solid var(--line-2); background: var(--surface); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .btn:hover { border-color: var(--brand); }
 .btn.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
 .btn.accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 650; }

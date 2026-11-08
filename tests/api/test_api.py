@@ -140,3 +140,42 @@ def test_audit_export_is_csv_oldest_first(api):
     assert status == 200 and out["filename"] == "audit-log.csv"
     assert lines[0].startswith("Time,Case,Title,Actor")
     assert lines[1] < lines[-1]  # ISO times sort as text, so the first row is the oldest
+
+
+# ---- training ----
+
+def test_completing_training_clears_what_is_due(api):
+    _, before = api("GET", "/api/training", pid="p_hannah")
+    due = [t for t in before["mine"] if t["state"] in ("due", "overdue")]
+    assert before["dueCount"] == len(due) == 1 and before["canMark"]
+    status, after = api("POST", "/api/training/" + due[0]["id"] + "/complete", pid="p_hannah")
+    assert status == 200 and after["dueCount"] == 0
+    done = next(t for t in after["mine"] if t["id"] == due[0]["id"])
+    assert done["state"] == "current" and done["completedAt"] == int(NOW) and done["completedVersion"] == due[0]["version"]
+
+
+def test_completing_keeps_other_courses_and_refuses_admin(api):
+    _, before = api("GET", "/api/training", pid="p_dana")
+    first = before["mine"][0]
+    api("POST", "/api/training/" + before["mine"][1]["id"] + "/complete", pid="p_dana")
+    _, after = api("GET", "/api/training", pid="p_dana")
+    assert after["mine"][0]["completedAt"] == first["completedAt"]  # the other record is untouched
+    assert api("POST", "/api/training/t_intro/complete", pid="p_admin")[0] == 400
+    assert api("POST", "/api/training/t_nope/complete", pid="p_dana")[0] == 404
+
+
+def test_only_managers_see_who_has_completed_what(api):
+    assert api("GET", "/api/training", pid="p_dana")[1]["matrix"] is None
+    _, lead = api("GET", "/api/training", pid="p_elena")
+    assert len(lead["matrix"]["rows"]) == 22 and lead["canRemind"]
+    assert all(set(r["states"]) == {t["id"] for t in lead["matrix"]["trainings"]} for r in lead["matrix"]["rows"])
+
+
+def test_training_reminders_go_to_the_outbox(api):
+    assert api("POST", "/api/training/remind", pid="p_dana")[0] == 400
+    status, out = api("POST", "/api/training/remind", pid="p_elena")
+    assert status == 200 and out["peopleReminded"] > 0
+    _, mails = api("GET", "/api/outbox", pid="p_elena")
+    reminders = [m for m in mails if m["subject"] == "Reminder: training due"]
+    assert len(reminders) == out["peopleReminded"] and reminders[0]["ref"]["id"] == "TRAINING"
+    assert reminders[0]["body"].startswith("Please complete: ")

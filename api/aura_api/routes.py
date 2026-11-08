@@ -19,6 +19,9 @@ except ``GET /api/bootstrap``)::
     GET  /api/audit?who=p_sam&q=vote             the audit log, newest first (who: auto, a case or a person)
     POST /api/audit/verify                       check the hash chain on every case
     GET  /api/audit/export                       the whole audit log as CSV text
+    GET  /api/training                           my training, and everyone's for the lead, auditor and admin
+    POST /api/training/{id}/complete             record that I finished a course
+    POST /api/training/remind                    email everyone with training due (lead or admin)
     GET  /api/tools                              the AI tool catalog
     POST /api/tools                              start reporting a tool (a private draft)
     GET  /api/tools/{id}                         one tool
@@ -62,6 +65,9 @@ ROUTES = [
     ("GET", r"/api/audit", lambda st, pid, m, q, b: S.audit_log(st, pid, q.get("who"), q.get("q"))),
     ("POST", r"/api/audit/verify", lambda st, pid, m, q, b: S.verify_audit_trail(st, pid)),
     ("GET", r"/api/audit/export", lambda st, pid, m, q, b: S.audit_export(st, pid)),
+    ("GET", r"/api/training", lambda st, pid, m, q, b: S.training(st, pid)),
+    ("POST", r"/api/training/remind", lambda st, pid, m, q, b: S.training_reminders(st, pid)),
+    ("POST", r"/api/training/(?P<id>[\w-]+)/complete", lambda st, pid, m, q, b: S.complete_training(st, pid, m["id"])),
     ("GET", r"/api/tools", lambda st, pid, m, q, b: S.list_tools(st, pid)),
     ("POST", r"/api/tools", lambda st, pid, m, q, b: S.new_tool(st, pid)),
     ("GET", r"/api/tools/(?P<id>[\w-]+)", lambda st, pid, m, q, b: S.get_tool(st, pid, m["id"])),

@@ -13,7 +13,7 @@ import re
 from datetime import datetime, timezone
 
 import aura_engine as E
-from aura_engine import constants, controls, matching, review
+from aura_engine import constants, controls, matching, people, review
 from aura_engine.jsx import short_date
 from aura_engine.tools import TOOL_STATUS
 
@@ -252,10 +252,10 @@ def audit_entries(cases: list[dict], viewer: dict) -> list[dict]:
     rows = []
     for c in cases:
         for e in c.get("audit") or []:
-            e = mask_log(e,viewer)
+            e = mask_log(e, viewer)
             actor = constants.by_id(e.get("actor")) if e.get("actor") else None
-            rows.append({**e,"caseId": c["id"], "caseTitle": c["title"],
-                         "actorName": actor["name"] if actor else "" })
+            rows.append({**e, "caseId": c["id"], "caseTitle": c["title"],
+                         "actorName": actor["name"] if actor else ""})
     return sorted(rows, key=lambda r: r["ts"], reverse=True)
 
 
@@ -292,3 +292,47 @@ def audit_csv(cases: list[dict], viewer: dict) -> str:
                      r.get("action"), constants.STAGE_LABEL.get(r.get("from"), ""),
                      constants.STAGE_LABEL.get(r.get("to"), ""), r.get("note"), r.get("rv") or "", r.get("hash") or ""])
     return E.to_csv(rows)
+
+
+# ---- training ----
+
+TRAINING_MANAGERS = {"lead", "auditor", "admin"}  # who sees the "who has completed what" table
+
+
+def training_people() -> list[dict]:
+    """Everyone training applies to: not the demo admin or the read-only auditor."""
+    return [p for p in constants.PEOPLE if p["role"] not in ("admin", "auditor")]
+
+
+def training_card(t: dict, training: dict, person: dict, now: int) -> dict:
+    """One course as this person sees it: its state and when they did it. JavaScript ``vTraining`` (cards)."""
+    rec = people.training_rec(training, person["id"], t["id"])
+    months = t.get("refreshMonths") or 12
+    return {**t, "refreshMonths": months, "state": people.training_state(training, person["id"], t, now),
+            "completedAt": rec["at"] if rec else None, "completedVersion": (rec.get("ver") or t.get("version")) if rec else None,
+            "validUntil": rec["at"] + months * 30.4375 * constants.DAY if rec else None}
+
+
+def training_due(trainings: list[dict], training: dict, person: dict, now: int) -> list[dict]:
+    """Courses this person has never done or that have lapsed. JavaScript ``trainDue``."""
+    return [t for t in trainings if people.training_applies(t, person)
+            and people.training_state(training, person["id"], t, now) in ("due", "overdue")]
+
+
+def training_page(rules: dict, training: dict, person: dict, now: int) -> dict:
+    """Everything the Training page shows. JavaScript ``vTraining``."""
+    trainings = rules.get("trainings") or []
+    out = {"mine": [training_card(t, training, person, now) for t in trainings if people.training_applies(t, person)],
+           "dueCount": len(training_due(trainings, training, person, now)),
+           "canMark": person["role"] not in ("admin", "auditor"),
+           "canRemind": person["role"] in ("lead", "admin"),
+           "matrix": None}
+    if person["role"] in TRAINING_MANAGERS:
+        units = {u["id"]: u["label"] for u in rules.get("units") or []}
+        out["matrix"] = {
+            "trainings": [{"id": t["id"], "title": t["title"]} for t in trainings],
+            "rows": [{"id": p["id"], "name": p["name"], "title": p.get("title", ""), "unit": units.get(p.get("unit"), ""),
+                      "states": {t["id"]: people.training_state(training, p["id"], t, now) if people.training_applies(t, p) else None
+                                 for t in trainings}}
+                     for p in training_people()]}
+    return out

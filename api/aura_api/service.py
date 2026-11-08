@@ -220,6 +220,52 @@ def tamper(store: Store, pid: str) -> dict:
     return {"caseId": c["id"], "entry": i + 1}
 
 
+# ---- training ----
+
+def training(store: Store, pid: str) -> dict:
+    """The Training page for the person acting."""
+    return views.training_page(store.rules, store.data["meta"].get("training") or {}, person(pid), clock_ms())
+
+
+def complete_training(store: Store, pid: str, training_id: str) -> dict:
+    """Record that the person acting finished a course, today, at its current version. JavaScript ``traindone``."""
+    p = person(pid)
+    if p["role"] in ("admin", "auditor"):
+        raise EngineError("Training is recorded by the person who took it.")
+    t = next((x for x in store.rules.get("trainings") or [] if x["id"] == training_id), None)
+    if not t:
+        raise NotFound("No training " + training_id + ".")
+    with store.lock:
+        meta = store.data["meta"]
+        records = clone(meta.get("training") or {})
+        records[p["id"]] = {**(records.get(p["id"]) or {}), t["id"]: {"at": clock_ms(), "ver": t.get("version")}}
+        meta["training"] = records
+        store.save()
+    return training(store, pid)
+
+
+def training_reminders(store: Store, pid: str) -> dict:
+    """Email everyone with training due or overdue. Governance lead or demo admin. JavaScript ``trainremind``."""
+    if person(pid)["role"] not in ("lead", "admin"):
+        raise EngineError("Only the governance lead can send training reminders.")
+    with store.lock:
+        meta, now = store.data["meta"], clock_ms()
+        mails = list(meta.get("trainingMail") or [])
+        n = 0
+        for x in views.training_people():
+            due = views.training_due(store.rules.get("trainings") or [], meta.get("training") or {}, x, now)
+            if not due:
+                continue
+            n += 1
+            contact = ", or contact " + due[0]["contact"] + " if you are stuck" if due[0].get("contact") else ""
+            mails.append({"ts": now, "n": len(mails), "to": [x["id"]], "subject": "Reminder: training due",
+                          "body": "Please complete: " + "; ".join(t["title"] for t in due) + ". Open Training in AURA" + contact + ".",
+                          "kind": "reminder", "auto": False})
+        meta["trainingMail"] = mails
+        store.save()
+    return {"peopleReminded": n}
+
+
 # ---- AI tool catalog ----
 
 def list_tools(store: Store, pid: str) -> list[dict]:
@@ -260,4 +306,3 @@ def tool_action(store: Store, pid: str, tool_id: str, action_id: str, inp: dict 
         store.put_tool(nt)
         store.save()
     return views.tool_view(nt, p)
-
