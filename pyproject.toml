@@ -1,0 +1,25 @@
+[project]
+name = "aura-engine"
+version = "0.1.0"
+description = "AURA AI governance engine: the Python port of the build 27 wireframe engine."
+requires-python = ">=3.11"
+dependencies = []  # the engine uses the standard library only
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["engine"]
+include = ["aura_engine*"]
+
+[tool.setuptools.package-data]
+aura_engine = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["engine"]
+addopts = "-q"

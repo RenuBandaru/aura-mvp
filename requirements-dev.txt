@@ -1,0 +1,2 @@
+# Tools for working on the engine. The engine itself needs nothing beyond Python 3.11+.
+pytest>=8
