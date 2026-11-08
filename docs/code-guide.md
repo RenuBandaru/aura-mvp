@@ -171,6 +171,7 @@ the code in `actions.py` that decided it.
 | --- | --- |
 | `store.py` | Holds the data (cases, tools, files, rules). Memory plus an optional JSON file locally; a database in Azure later. |
 | `views.py` | Turns engine results into what a screen needs: the queue, list rows, the case page, live form checks. Ports of small helpers from build 27's `ui.js`. |
+| `rules_admin.py` | The rules editor's questions about a draft: what each item is used by, whether it may be deleted, checks on one edited item, and What-if. Ports of build 27's `ui.js` rules section. |
 | `service.py` | One function per thing the app can do: read the queue, perform an action, log a suggestion, upload evidence. Each change asks the engine for the new case, then saves it. |
 | `routes.py` | Maps URLs (such as `POST /api/cases/UC-1012/actions/rv_vote`) to those functions. Lists every endpoint at the top. |
 | `../dev_server.py` | Runs the API (and the built screens) on your laptop with only the Python standard library. |
@@ -191,7 +192,9 @@ with `.map`. The official tutorial at react.dev covers all three.
 
 ## 8. What comes next
 
-1. **Data that survives restarts in Azure.** A `Store` backed by Azure SQL or Table storage, with the same methods.
-2. **Microsoft sign-in.** MSAL in React, Entra ID in front of the API, and a mapping from signed-in users to AURA people.
-3. **The remaining build 27 screen**: the rules editor.
-4. **Deploy to the BWC sandbox** once the above works locally.
+Every build 27 screen is now in the React app, including the rules editor (`pages/RulesPage.tsx` and
+`components/RuleEditors.tsx`).
+
+1. **Microsoft sign-in.** MSAL in React, Entra ID in front of the API, and a mapping from signed-in users to AURA people.
+2. **Data that survives restarts in Azure.** A `Store` backed by Azure SQL, with the same methods.
+3. **Deploy to the BWC sandbox** once the above works locally.

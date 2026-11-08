@@ -190,3 +190,14 @@ details.msg pre { white-space: pre-wrap; font: inherit; margin: 8px 0 0; }
   .bar, .exbar { grid-template-columns: 96px minmax(0, 1fr) 28px; }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Rules page */
+tr.off td, .card.off { opacity: 0.6; }
+.dirtydot { color: var(--accent); }
+input.num { width: 80px; border: 1px solid var(--line-2); border-radius: 6px; padding: 5px 7px; background: var(--surface); }
+td input.wide, td select { width: 100%; border: 1px solid var(--line-2); border-radius: 6px; padding: 5px 7px; background: var(--surface); }
+.term { display: flex; flex-direction: column; gap: 4px; }
+.whatif { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.whatif select { border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 8px; background: var(--surface); max-width: 100%; }
+.jsonbox { min-height: 420px; width: 100%; border: 1px solid var(--line-2); border-radius: 6px; padding: 10px; background: var(--surface); }
+@media (max-width: 760px) { .whatif { grid-template-columns: 1fr; } }
