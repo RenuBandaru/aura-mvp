@@ -163,11 +163,35 @@ A good first exercise: in a Python prompt, build the seed, take UC-1012 (at the 
 `actions_for` for `p_sam`, `p_elena` and `p_dana`. Explain why each person sees what they see, then find
 the code in `actions.py` that decided it.
 
-## 7. What comes next
+## 7. The API and the screens
 
-1. `api/`: an Azure Functions (Python) app. Each endpoint loads a case, calls `actions_for` or `perform`,
-   saves the result and returns it. Sign-in through Microsoft Entra ID; the signed-in user maps to a person.
-2. `web/`: the React app (Vite, TypeScript, MSAL). Screens are rebuilt from the wireframe; buttons and
-   dialogs are drawn from `actions_for` so the UI never duplicates governance rules.
-3. Local first: both run on a laptop (Azure Functions Core Tools and Vite dev server) before anything is
-   deployed to the BWC sandbox.
+**The API** (`api/aura_api`) sits between the screens and the engine. Read it in this order:
+
+| File | What it does |
+| --- | --- |
+| `store.py` | Holds the data (cases, tools, files, rules). Memory plus an optional JSON file locally; a database in Azure later. |
+| `views.py` | Turns engine results into what a screen needs: the queue, list rows, the case page, live form checks. Ports of small helpers from build 27's `ui.js`. |
+| `service.py` | One function per thing the app can do: read the queue, perform an action, log a suggestion, upload evidence. Each change asks the engine for the new case, then saves it. |
+| `routes.py` | Maps URLs (such as `POST /api/cases/UC-1012/actions/rv_vote`) to those functions. Lists every endpoint at the top. |
+| `../dev_server.py` | Runs the API (and the built screens) on your laptop with only the Python standard library. |
+| `../function_app.py` | The same routes as an Azure Functions app. |
+
+Who is acting: the React app sends the person picked in **Viewing as** in an `X-Aura-Person` header. With
+Microsoft sign-in, that header is replaced by the signed-in user.
+
+**The screens** (`web/src`) are React components. Start with `App.tsx` (the frame and navigation), then
+`pages/CasePage.tsx` (one use case). The case page asks the API for the case and the actions the person
+has, shows each action as a button, and opens `components/ActionDialog.tsx`, which draws whatever fields
+the engine asked for (`components/fields.tsx`). That is why a new action in the engine shows up in the UI
+without new React code. The use case form (`components/FormEditor.tsx`) sends the form to the API as you
+type and shows which questions apply and what is missing.
+
+To learn React for this code: components and props, `useState` and `useEffect`, and how a list renders
+with `.map`. The official tutorial at react.dev covers all three.
+
+## 8. What comes next
+
+1. **Data that survives restarts in Azure.** A `Store` backed by Azure SQL or Table storage, with the same methods.
+2. **Microsoft sign-in.** MSAL in React, Entra ID in front of the API, and a mapping from signed-in users to AURA people.
+3. **The remaining build 27 screens**: dashboard, rules editor, training and audit log.
+4. **Deploy to the BWC sandbox** once the above works locally.

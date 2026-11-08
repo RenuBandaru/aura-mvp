@@ -1,0 +1,2 @@
+# Packages the Azure Functions host installs. The local dev server (dev_server.py) needs none of these.
+azure-functions>=1.20

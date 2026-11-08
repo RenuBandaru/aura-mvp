@@ -16,8 +16,10 @@ This repository moves the build 27 wireframe (HTML and JavaScript) to a React fr
    only talks to the API.
 6. **Run the tests after every change**, and commit tests together with the code they cover:
    `python -m pytest` from the repository root.
-7. **The outbox is simulated.** Emails are recorded on the case (`outbox`) and never sent.
-8. **Check behavior in code before describing it.** Read the engine and run the tests rather than
+7. **No governance rules in React.** If a screen needs to decide something (who can act, what is
+   missing), the engine or `api/aura_api/views.py` decides and the screen shows the answer.
+8. **The outbox is simulated.** Emails are recorded on the case (`outbox`) and never sent.
+9. **Check behavior in code before describing it.** Read the engine and run the tests rather than
    relying on memory or older documents.
 
 ## The engine port
@@ -45,5 +47,6 @@ This repository moves the build 27 wireframe (HTML and JavaScript) to a React fr
 | `tests/equivalence/` | Golden traces from build 27 and the test that replays them |
 | `tests/behavior/` | The 110 build 27 behavior checks, ported to pytest |
 | `docs/code-guide.md` | How the code is organized and how to read it |
-| `api/` | (next) Azure Functions app that serves the engine |
-| `web/` | (next) React app (Vite, TypeScript, MSAL sign-in) |
+| `api/` | The API: data store, views for screens, routes; runs with `dev_server.py` or Azure Functions |
+| `web/` | The React app (Vite, TypeScript). Screens only: every rule comes from the API |
+| `tests/api/` | API tests through the same dispatch both hosts use |
