@@ -28,7 +28,7 @@ from aura_api.routes import dispatch  # noqa: E402
 from aura_api.store import Store  # noqa: E402
 from aura_engine.jsx import js_json  # noqa: E402
 
-store = Store(os.environ.get("AURA_DATA_FILE") or None)
+store = Store(os.environ.get("AURA_DATA_FILE") or None, scenario_file=os.environ.get("AURA_SCENARIO_FILE") or None)
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 

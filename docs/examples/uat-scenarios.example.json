@@ -1,0 +1,442 @@
+{
+ "label": "Example scenarios (invented)",
+ "rules": {
+  "consultAreas": [
+   {
+    "id": "ca_contracts",
+    "label": "Contracts",
+    "personId": "p_rosa",
+    "enabled": true,
+    "question": "Please review the vendor terms: model training on company data, data retention and storage location, and what written clarification is needed before contract.",
+    "triggers": [
+     {
+      "label": "Vendor product whose data terms are not known (training, sharing or location)",
+      "level": "required",
+      "when": [
+       {
+        "src": "type",
+        "in": [
+         "vendor"
+        ]
+       },
+       {
+        "any": [
+         {
+          "src": "q:q_train",
+          "in": [
+           "unknown"
+          ]
+         },
+         {
+          "src": "q:q_share",
+          "in": [
+           "unknown"
+          ]
+         },
+         {
+          "src": "q:q_us",
+          "in": [
+           "unknown"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "label": "Vendor product, or data shared with another company",
+      "level": "recommended",
+      "when": [
+       {
+        "any": [
+         {
+          "src": "type",
+          "in": [
+           "vendor"
+          ]
+         },
+         {
+          "src": "q:q_share",
+          "in": [
+           "yes",
+           "unknown"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "ca_ip",
+    "label": "Intellectual property",
+    "personId": "p_kenji",
+    "enabled": true,
+    "question": "Please assess intellectual property points: inventions, patents, proprietary designs and ownership of AI-generated code or content.",
+    "triggers": [
+     {
+      "label": "Touches inventions or patents",
+      "level": "required",
+      "when": [
+       {
+        "src": "q:q_patent",
+        "in": [
+         "yes",
+         "unknown"
+        ]
+       }
+      ]
+     },
+     {
+      "label": "Proprietary information, or AI-written code used in products",
+      "level": "recommended",
+      "when": [
+       {
+        "any": [
+         {
+          "src": "q:q_ip",
+          "in": [
+           "yes",
+           "unknown"
+          ]
+         },
+         {
+          "src": "q:q_code",
+          "in": [
+           "customer",
+           "firmware",
+           "unknown"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "ca_eng",
+    "label": "Product engineering and firmware",
+    "personId": "p_felix",
+    "enabled": true,
+    "question": "Please assess product safety and firmware risk: what the AI can change in a product or its firmware, how it is validated, and what certification gates apply.",
+    "triggers": [
+     {
+      "label": "Changes safety-affecting product behavior, or AI writes or tests safety-affecting firmware",
+      "level": "required",
+      "when": [
+       {
+        "any": [
+         {
+          "src": "q:q_ot",
+          "in": [
+           "yes",
+           "unknown"
+          ]
+         },
+         {
+          "src": "q:q_fw",
+          "in": [
+           "yes",
+           "unknown"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "label": "AI-written code or tests for firmware or customer software",
+      "level": "recommended",
+      "when": [
+       {
+        "src": "q:q_code",
+        "in": [
+         "firmware",
+         "customer"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "ca_connected",
+    "label": "Connected products engineering",
+    "personId": "p_dara",
+    "enabled": true,
+    "question": "Please assess the connected product: device data, app behavior, and what the AI tells or does for device owners.",
+    "triggers": [
+     {
+      "label": "Customer-facing use that can affect a product or its settings",
+      "level": "recommended",
+      "when": [
+       {
+        "src": "scope",
+        "in": [
+         "customer"
+        ]
+       },
+       {
+        "any": [
+         {
+          "src": "q:q_ot",
+          "in": [
+           "yes",
+           "unknown"
+          ]
+         },
+         {
+          "src": "q:q_target",
+          "in": [
+           "plant"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "ca_marketing",
+    "label": "Marketing and customer communications",
+    "personId": "p_bea",
+    "enabled": true,
+    "question": "Please review content that customers or the public will see: accuracy, brand and disclosure that AI was used.",
+    "triggers": [
+     {
+      "label": "Produces content used outside the company",
+      "level": "recommended",
+      "when": [
+       {
+        "src": "q:q_pub",
+        "in": [
+         "yes",
+         "unknown"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "ca_sales",
+    "label": "Sales",
+    "personId": "p_theo",
+    "enabled": true,
+    "question": "Please advise on effects on sales channels, pricing, specifications and customer commitments.",
+    "triggers": []
+   },
+   {
+    "id": "ca_cs",
+    "label": "Customer service",
+    "personId": "p_ada",
+    "enabled": true,
+    "question": "Please assess the effect on customers and support staff: hand-off to a person, escalation, and what happens when the AI is wrong.",
+    "triggers": [
+     {
+      "label": "Customer-facing",
+      "level": "recommended",
+      "when": [
+       {
+        "src": "scope",
+        "in": [
+         "customer"
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "EX-01",
+   "title": "Draft internal notes from public text",
+   "idea": "Use the company chat assistant to draft internal notes from public sources.",
+   "submitter": "p_dana",
+   "daysAgo": 12,
+   "form": {
+    "ucType": "use",
+    "solution": "Staff paste public text into the company's in-tenant chat assistant and edit the draft it returns.",
+    "problem": "Notes take too long to write.",
+    "businessCase": "Saves drafting time.",
+    "successMetric": "Draft time halved.",
+    "dataRequired": "Public text only.",
+    "process": "Office work",
+    "users": "All staff",
+    "owner": "Dana Whitfield",
+    "sponsor": "Hannah Cole",
+    "valueUSD": 5000,
+    "costUSD": 0,
+    "scope": "team",
+    "autonomy": "advice",
+    "answers": {
+     "q_sens": "pub",
+     "q_model": "yes",
+     "q_outside": "no",
+     "q_tools": "no"
+    },
+    "measures": [
+     {
+      "name": "Minutes to draft a note",
+      "dir": "lower",
+      "target": 10,
+      "scaleUp": 5,
+      "stop": 30
+     }
+    ]
+   },
+   "steps": [
+    {
+     "do": "develop",
+     "by": "p_jordan",
+     "daysAgo": 11
+    },
+    {
+     "do": "submit",
+     "by": "p_dana",
+     "daysAgo": 10
+    }
+   ]
+  },
+  {
+   "id": "EX-02",
+   "title": "Vendor invoice capture with unclear data terms",
+   "idea": "A vendor service reads supplier invoices and enters them in the finance system.",
+   "submitter": "p_dana",
+   "daysAgo": 9,
+   "form": {
+    "ucType": "vendor",
+    "solution": "Invoice images are sent to a vendor that extracts fields for accounts payable staff to check.",
+    "problem": "Manual invoice entry.",
+    "businessCase": "Faster payables.",
+    "successMetric": "Entry time per invoice.",
+    "dataRequired": "Supplier invoices.",
+    "process": "Accounts payable",
+    "users": "AP staff",
+    "owner": "Dana Whitfield",
+    "sponsor": "Victor Shaw",
+    "valueUSD": 60000,
+    "costUSD": 40000,
+    "scope": "team",
+    "autonomy": "assist",
+    "yes": [
+     "q_share"
+    ],
+    "answers": {
+     "q_train": "unknown",
+     "q_sens": "conf",
+     "q_model": "yes",
+     "q_outside": "no",
+     "q_tools": "no"
+    },
+    "measures": [
+     {
+      "name": "Minutes to enter an invoice",
+      "dir": "lower",
+      "target": 2,
+      "scaleUp": 1,
+      "stop": 6
+     }
+    ]
+   },
+   "steps": [
+    {
+     "do": "develop",
+     "by": "p_jordan",
+     "daysAgo": 8
+    },
+    {
+     "do": "submit",
+     "by": "p_dana",
+     "daysAgo": 7
+    }
+   ]
+  },
+  {
+   "id": "EX-03",
+   "title": "Customer troubleshooting assistant with an expert hold",
+   "idea": "A chat assistant helps device owners troubleshoot.",
+   "submitter": "p_priya",
+   "daysAgo": 10,
+   "form": {
+    "ucType": "vendor",
+    "solution": "A vendor chat assistant answers device owners' troubleshooting questions from manuals and can hand off to an agent.",
+    "problem": "Support call volume.",
+    "businessCase": "Shorter waits.",
+    "successMetric": "Deflection rate.",
+    "dataRequired": "Manuals and chat transcripts.",
+    "process": "Customer support",
+    "users": "Device owners",
+    "owner": "Priya Nair",
+    "sponsor": "Victor Shaw",
+    "valueUSD": 200000,
+    "costUSD": 45000,
+    "scope": "customer",
+    "autonomy": "assist",
+    "yes": [
+     "q_hall",
+     "q_pii",
+     "q_share",
+     "q_pub"
+    ],
+    "answers": {
+     "q_model": "yes",
+     "q_outside": "yes",
+     "q_tools": "no"
+    },
+    "controls": [
+     "c_human",
+     "c_test",
+     "c_log",
+     "c_escalate"
+    ],
+    "measures": [
+     {
+      "name": "Deflection rate (%)",
+      "dir": "higher",
+      "target": 30,
+      "scaleUp": 40,
+      "stop": 10
+     }
+    ]
+   },
+   "steps": [
+    {
+     "do": "develop",
+     "by": "p_jordan",
+     "daysAgo": 9
+    },
+    {
+     "do": "submit",
+     "by": "p_priya",
+     "daysAgo": 8
+    },
+    {
+     "do": "vet_to_panel",
+     "by": "p_elena",
+     "daysAgo": 7,
+     "input": {
+      "note": "Customer-facing; full panel."
+     }
+    },
+    {
+     "do": "consult",
+     "daysAgo": 6,
+     "smes": [
+      "ca_ai",
+      "ca_cs"
+     ],
+     "hold": [
+      "ca_ai"
+     ],
+     "question": "Could the assistant give unsafe troubleshooting advice, and how is that prevented?"
+    }
+   ]
+  }
+ ]
+}

@@ -35,6 +35,7 @@ from .review import (deadlock_options, open_unaccepted, remind_case, rev_blocker
                      terms_gaps, terms_now)
 from .rules import default_rules, norm_rules
 from .rules_editor import describe_rule, diff_rules, option_usage, question_usage, validate_rules, what_if
+from .scenario_seed import ScenarioError, build_scenario_seed, load_scenarios
 from .seed import build_seed
 from .tools import ensure_tool, new_tool, perform_tool, tool_actions, tool_visible
 from .triage import case_gaps, estimate_days, rescore, run_scoring, run_triage

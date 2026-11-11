@@ -66,7 +66,18 @@ def digest(v) -> str:
 
 @lru_cache(maxsize=1)
 def seed() -> dict:
-    return E.build_seed(NOW)
+    """The sample data, limited to build 27's people.
+
+    The experts added after build 27 (``constants.ADDED_EXPERTS``) get training records too. Build 27 never
+    had them, so their records are left out here; ``tests/behavior/test_added_experts.py`` covers them.
+    """
+    data = E.build_seed(NOW)
+    for p in constants.ADDED_EXPERTS:
+        data["meta"]["training"].pop(p["id"], None)
+    return data
+
+
+BUILD27_IDS = {p["id"] for p in constants.PEOPLE[: constants.BUILD27_PEOPLE_COUNT]}
 
 
 @lru_cache(maxsize=1)
@@ -131,7 +142,7 @@ def run_fn_check(ch: dict) -> dict:
     """Runs one ``fn`` check. Returns ``{"ok": value}`` or ``{"error": message}`` like record.js."""
     if ch["fn"] == "waitingOn":
         cases, ctx = resolve(ch["args"][0]), resolve(ch["args"][1])
-        return {"ok": [[p["id"] for p in E.waiting_on(c, ctx)] for c in cases]}
+        return {"ok": [[p["id"] for p in E.waiting_on(c, ctx) if p["id"] in BUILD27_IDS] for c in cases]}
     try:
         return {"ok": engine_fn(ch["fn"])(*resolve(ch["args"]))}
     except EngineError as e:

@@ -66,6 +66,22 @@ PEOPLE = [
     _p("p_tomas", "u_ops", "Tomas Brandt", "submitter", "New hire, plant operations"),
 ]
 
+# How many people build 27 had. The equivalence tests compare results for these people only.
+BUILD27_PEOPLE_COUNT = len(PEOPLE)
+
+# Experts added after build 27 so the expert areas a sponsor asked for each have a sample person.
+# They are invented, like everyone above. They are added at the end so build 27's order is kept.
+ADDED_EXPERTS = [
+    _p("p_rosa", "u_legal", "Rosa Albright", "sme", "Contracts"),
+    _p("p_kenji", "u_legal", "Kenji Watanabe", "sme", "Intellectual property"),
+    _p("p_felix", "u_eng", "Felix Moreau", "sme", "Product engineering, product risk and firmware"),
+    _p("p_dara", "u_eng", "Dara Quinn", "sme", "Connected products engineering"),
+    _p("p_bea", "u_corp", "Beatriz Soto", "sme", "Marketing and customer communications"),
+    _p("p_theo", "u_corp", "Theo Lindqvist", "sme", "Sales"),
+    _p("p_ada", "u_cs", "Adaeze Okoro", "sme", "Customer service"),
+]
+PEOPLE.extend(ADDED_EXPERTS)
+
 # The actor recorded for automated steps, such as triage and reminders.
 SYSTEM = {"id": "system", "name": "System (automated)", "role": "system", "title": ""}
 

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "api"))
 
 from aura_api.routes import dispatch  # noqa: E402
 from aura_api.store import Store  # noqa: E402
+from aura_engine import constants  # noqa: E402
 
 NOW = "1793804400000"
 
@@ -31,7 +32,7 @@ def api(monkeypatch):
 
 def test_bootstrap_lists_people_and_rules(api):
     status, out = api("GET", "/api/bootstrap", pid=None)
-    assert status == 200 and len(out["people"]) == 24 and out["rules"]["questions"]
+    assert status == 200 and len(out["people"]) == 24 + len(constants.ADDED_EXPERTS) and out["rules"]["questions"]
 
 
 def test_unknown_person_is_refused(api):
@@ -167,7 +168,7 @@ def test_completing_keeps_other_courses_and_refuses_admin(api):
 def test_only_managers_see_who_has_completed_what(api):
     assert api("GET", "/api/training", pid="p_dana")[1]["matrix"] is None
     _, lead = api("GET", "/api/training", pid="p_elena")
-    assert len(lead["matrix"]["rows"]) == 22 and lead["canRemind"]
+    assert len(lead["matrix"]["rows"]) == 22 + len(constants.ADDED_EXPERTS) and lead["canRemind"]
     assert all(set(r["states"]) == {t["id"] for t in lead["matrix"]["trainings"]} for r in lead["matrix"]["rows"])
 
 
@@ -284,3 +285,15 @@ def test_loading_an_old_version_and_rescoring(api):
     assert api("POST", "/api/rules/rescore", pid="p_dana")[0] == 400
     status, out = api("POST", "/api/rules/rescore", pid="p_elena")
     assert status == 200 and out["rescored"] > 0
+
+
+def test_a_store_with_scenarios_resets_to_the_sample_plus_scenario_cases(monkeypatch):
+    monkeypatch.setenv("AURA_FIXED_NOW", NOW)
+    example = Path(__file__).resolve().parents[2] / "docs" / "examples" / "uat-scenarios.example.json"
+    store = Store(None, scenario_file=example)
+    _, rows = dispatch(store, "GET", "/api/cases", {}, None, {"X-Aura-Person": "p_elena"})
+    ids = [r["id"] for r in rows]
+    assert "UC-1001" in ids and "EX-03" in ids
+    _, log = dispatch(store, "GET", "/api/audit", {"who": "EX-03"}, None, {"X-Aura-Person": "p_auditor"})
+    rows = log["entries"]
+    assert rows and {r["caseId"] for r in rows} == {"EX-03"}

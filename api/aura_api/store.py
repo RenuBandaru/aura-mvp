@@ -29,8 +29,10 @@ def clock_ms() -> int:
 class Store:
     """The app's data, with simple load, save and reset."""
 
-    def __init__(self, path: str | os.PathLike | None = None):
+    def __init__(self, path: str | os.PathLike | None = None, scenario_file: str | os.PathLike | None = None):
         self.path = Path(path) if path else None
+        # Optional scenario file (see aura_engine.scenario_seed): reset builds the sample data plus its cases.
+        self.scenario = E.load_scenarios(scenario_file) if scenario_file else None
         self.lock = threading.RLock()
         self.data: dict = {}
         if self.path and self.path.exists():
@@ -41,9 +43,10 @@ class Store:
     # ---- whole data set ----
 
     def reset(self) -> None:
-        """Start again from the sample data, built at the current time so due dates look natural."""
+        """Start again from the sample data (plus any scenario cases), built now so due dates look natural."""
         with self.lock:
-            self.data = E.build_seed(clock_ms())
+            now = clock_ms()
+            self.data = E.build_scenario_seed(now, self.scenario) if self.scenario else E.build_seed(now)
             self.save()
 
     def save(self) -> None:

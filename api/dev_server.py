@@ -2,6 +2,9 @@
 
     python api/dev_server.py            API on http://localhost:7071, data kept in api/.data/aura.json
     python api/dev_server.py --memory   start fresh every time, save nothing
+    python api/dev_server.py --scenarios FILE
+                                        add the cases in a scenario file (see aura_engine.scenario_seed);
+                                        data is kept in api/.data/aura-<file name>.json, apart from the default
 
 If the React app has been built (``npm run build`` in ``web/``), this server also serves it, so the
 whole app is at http://localhost:7071. While working on the screens, run ``npm run dev`` in ``web/``
@@ -75,8 +78,10 @@ def main():
     ap = argparse.ArgumentParser(description="Run the AURA API (and the built React app) locally.")
     ap.add_argument("--port", type=int, default=7071)
     ap.add_argument("--memory", action="store_true", help="do not save data between runs")
+    ap.add_argument("--scenarios", metavar="FILE", help="also load the cases in this scenario file (JSON)")
     args = ap.parse_args()
-    store = Store(None if args.memory else HERE / ".data" / "aura.json")
+    data_name = "aura-" + Path(args.scenarios).stem + ".json" if args.scenarios else "aura.json"
+    store = Store(None if args.memory else HERE / ".data" / data_name, scenario_file=args.scenarios)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(store))
     print(f"AURA is running on http://localhost:{args.port}  (Ctrl+C to stop)")
     if not (WEB_DIST / "index.html").is_file():

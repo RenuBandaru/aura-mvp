@@ -25,10 +25,19 @@ python api/dev_server.py
 After that, `python api/dev_server.py` is enough. Restart it after any Python change, and run
 `npm run build` again after any change in `web/`.
 
-Then open http://localhost:7071. Use **Viewing as** at the top right to act as any of the 24 sample
+Then open http://localhost:7071. Use **Viewing as** at the top right to act as any of the 31 sample
 people: Dana Whitfield (submitter), Elena Duarte (governance lead), Sam Okafor (panel), Margaret Hale
 (executive) and so on. Changes are kept in `api/.data/aura.json`; switch Viewing as to Demo admin and use
 **Data and demo** to reset to the sample data. Press Ctrl+C in the terminal to stop.
+
+### Load scenario data for a test session
+
+`python api/dev_server.py --scenarios FILE` adds the cases in a scenario file to the usual sample data
+(the sample cases are unchanged). Each scenario case is built by taking the real actions, so it has a
+real audit trail, and **Data and demo > Reset to sample data** restores the sample plus the scenarios.
+Data is kept in `api/.data/aura-<file name>.json`. See `engine/aura_engine/scenario_seed.py` for the
+format and `docs/examples/uat-scenarios.example.json` for an invented example. On Azure, set
+`AURA_SCENARIO_FILE`. Scenario files in this repository must hold invented data only.
 
 While changing the screens, use the live-reloading dev server instead:
 

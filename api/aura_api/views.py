@@ -272,7 +272,7 @@ def filter_audit(rows: list[dict], who: str | None, q: str | None) -> list[dict]
     JavaScript ``vAudit`` (the filter lines)."""
     if who == "auto":
         rows = [r for r in rows if r.get("auto")]
-    elif who and who.startswith("UC-"):
+    elif who and (who.startswith("UC-") or any(r["caseId"] == who for r in rows)):
         rows = [r for r in rows if r["caseId"] == who]
     elif who and who != "all":
         rows = [r for r in rows if r.get("actor") == who]
