@@ -50,7 +50,9 @@ export function Assessment({ d }: { d: CaseDetail }) {
     <div className="stack">
       <div className="card"><h2>Risk score</h2>
         <KV rows={[['Inherent risk', <b key="i">{s.inherent} points</b>], ['Tier', <span key="t" className={'tier ' + s.tier}>{boot.tierLabels[s.tier]}</span>],
-          ['After supported controls', `${s.residual} points (${boot.tierLabels[s.residualTier] || s.residualTier}), with ${s.controlCredit} points of control credit`],
+          ['Remaining risk, proven controls only', d.support?.net != null ? `${d.support.net} points (${boot.tierLabels[d.support.netTier] || d.support.netTier})` : ''],
+          ['If every claimed control is proven', `${s.residual} points (${boot.tierLabels[s.residualTier] || s.residualTier}), with ${s.controlCredit} points of control credit`],
+          ['Conditions to clear', (s.conditions || []).map((x: Dict) => x.label || x.text).join('; ')],
           ['Raised by', (s.overrides || []).filter((o: Dict) => o.raised).map((o: Dict) => o.label).join(', ')]]} />
         <h3 style={{ margin: '12px 0 6px' }}>Why</h3>
         <ul style={{ margin: 0, paddingLeft: 18 }}>{(s.explain || []).map((e: Dict, i: number) => <li key={i}>{e.label}: <b>{e.points > 0 ? '+' : ''}{e.points}</b></li>)}</ul>
@@ -97,7 +99,8 @@ async function openFile(fileId: string) {
 }
 
 export function Reviews({ d }: { d: CaseDetail }) {
-  const { name } = useApp();
+  const { name, boot } = useApp();
+  const title = (pid: string) => boot.people.find(p => p.id === pid)?.title || '';
   const c = d.case, rv = d.review;
   const decisions: [string, Dict | null][] = [['Vetting', c.vetting], ['Panel decision', c.panelDecision], ['Executive decision', c.execDecision]];
   return (
@@ -112,7 +115,7 @@ export function Reviews({ d }: { d: CaseDetail }) {
         </tbody></table></div></div>}
       <div className="card"><h2>Experts and stakeholders</h2>
         {(c.consults || []).length ? <div className="stack" style={{ gap: 8 }}>{c.consults.map((k: Dict) => <div key={k.id} className="pnote">
-          <div className="row"><b>{name(k.personId)}</b><span className="chip">{k.kind === 'sme' ? 'Expert' : 'Stakeholder'}</span>
+          <div className="row"><b>{name(k.personId)}</b><span className="chip">{k.kind === 'sme' ? (title(k.personId) || 'Expert') : 'Stakeholder'}</span>
             {k.required && <span className="chip warn">Holds the decision</span>}
             <span className={'chip ' + (k.status === 'responded' ? 'ok' : k.supersededBy ? '' : 'warn')}>{k.supersededBy ? 'Asked again' : k.status === 'responded' ? 'Responded' : 'Waiting'}</span>
             <span className="muted small">asked {fdate(k.requestedAt)}{k.dueAt ? ', due ' + fdate(k.dueAt) : ''}</span></div>
