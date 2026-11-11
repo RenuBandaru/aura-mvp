@@ -15,6 +15,7 @@ import { EvidenceDialog } from '../components/EvidenceDialog';
 import { FormEditor, draftFrom, DraftForm } from '../components/FormEditor';
 import { Activity, Assessment, ControlsEvidence, Reviews, UseCaseView } from '../components/CaseSections';
 import { MailList } from '../components/MailList';
+import { HoldingPanel, ReadinessCard } from '../components/CaseRedesign';
 
 const IP_TEXT = 'All AI models, datasets and outputs this use case produces are to be treated as corporate intellectual property, as the AI governance policy requires.';
 const STEPS = ['suggestion', 'use_case', 'vetting', 'panel', 'exec', 'pilot', 'production'];
@@ -103,6 +104,7 @@ export function CasePage({ id }: { id: string }) {
           {c.signoff?.status === 'requested' && c.stage === 'use_case' && <div className="callout">{name(c.signoff.requestedBy)} asked {name(c.signoff.ownerId)} to sign off as owner.</div>}
           {showGaps && gaps?.count > 0 && <div className="callout warn"><b>Still to answer before you submit</b>
             <ul style={{ margin: 0, paddingLeft: 18 }}>{[...gaps.fields, ...gaps.questions.map((q: Dict) => q.text), ...gaps.readiness.map((r: Dict) => r.text)].map((t: string, i: number) => <li key={i}>{t}</li>)}</ul></div>}
+          <HoldingPanel d={d} />
           <div>
             <div className="tabs" role="tablist" aria-label="Use case sections">{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={k === tab} onClick={() => setTab(k)}>{l}</button>)}</div>
             {tabs.find(t => t[0] === tab)?.[2]}
@@ -118,9 +120,11 @@ export function CasePage({ id }: { id: string }) {
             </div>}
             {buttons.length ? <div className="actions">{buttons.map(a => <div key={a.id}>
               <button className={'btn ' + (a.tone === 'primary' ? 'primary' : a.tone === 'danger' ? 'danger' : '')} aria-disabled={a.disabled || undefined} onClick={() => openAction(a)}>{a.label}</button>
-              {a.disabled && a.why && <p className="why">{a.why}</p>}</div>)}</div>
+              {a.disabled && a.why && <p className="why">{a.why}</p>}
+              {a.id === 'rv_vote' && (d.holding?.firmBlocked || []).length > 0 && <p className="why">Only a leaning decision for now. {d.holding!.firmBlocked.join(' ')}</p>}</div>)}</div>
               : !formActs.length && <WaitingOn d={d} />}
           </div>
+          <ReadinessCard d={d} />
           <div className="card"><h2>Facts</h2><dl className="facts">
             <dt>Stage</dt><dd>{boot.stageLabels[c.stage]}</dd>
             <dt>Submitter</dt><dd>{name(c.submitterId)}</dd>

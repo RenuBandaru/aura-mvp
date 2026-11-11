@@ -120,3 +120,13 @@ def test_load_scenarios_reports_unreadable_files(tmp_path):
     bad.write_text(json.dumps({"cases": "none"}), encoding="utf-8")
     with pytest.raises(E.ScenarioError, match="list of cases"):
         E.load_scenarios(bad)
+
+
+def test_each_consulted_area_can_get_its_own_question():
+    qs = {k["personId"]: k["question"] for k in case("EX-03")["consults"]}
+    assert qs["p_mina"].startswith("Could the assistant give unsafe")
+    assert qs["p_ada"].startswith("Is the handoff")
+
+
+def test_template_details_are_kept_on_the_form():
+    assert case("EX-03")["form"]["template"]["worstCase"].startswith("Confident wrong instructions")

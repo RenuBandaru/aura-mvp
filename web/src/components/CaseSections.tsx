@@ -5,6 +5,7 @@ import { go, useApp } from '../state';
 import type { CaseDetail, Dict } from '../types';
 import { fdate, fdatetime, money } from '../format';
 import { measuresText } from './MeasuresEditor';
+import { IndependenceCheck, ProofChip, TierSensitivity } from './CaseRedesign';
 
 const STATUS_CLS: Record<string, string> = { confirmed: 'ok', evidence: 'ok', declined: 'bad', neither: 'warn' };
 
@@ -13,31 +14,55 @@ const KV = ({ rows }: { rows: [string, React.ReactNode][] }) => (
   <div className="kv">{rows.filter(([, v]) => v !== '' && v != null && v !== false).flatMap(([k, v]) => [<div key={k + 'k'}>{k}</div>, <div key={k + 'v'}>{v}</div>])}</div>
 );
 
+/** Optional sections from the client's use-case template, stored under form.template (change 6). */
+export const TEMPLATE_FIELDS: [string, string, string][] = [
+  ['businessArea', 'Business area', 'stake'], ['technicalOwner', 'Technical owner', 'stake'], ['projectSmes', 'Project SMEs', 'stake'], ['endUsers', 'End users', 'stake'],
+  ['tools', 'Tools and technologies', 'impl'], ['implementationPlan', 'Implementation plan and timeline', 'impl'],
+  ['risks', 'Risks and concerns', 'risk'], ['worstCase', 'Worst case scenario', 'risk'], ['dataVolume', 'Data volume', 'risk'], ['dataQuality', 'Data quality considerations', 'risk'],
+];
+
+/** A collapsible group of label/value rows; hidden when every value is empty. */
+const Section = ({ title, rows, open = true, children }: { title: string; rows: [string, React.ReactNode][]; open?: boolean; children?: React.ReactNode }) =>
+  rows.some(([, v]) => v !== '' && v != null && v !== false) || children
+    ? <details className="card sec" open={open}><summary><h2>{title}</h2></summary><KV rows={rows} />{children}</details> : null;
+
+/** KPIs as a table with target, scale-up and stop limit (change 10). */
+const KpiTable = ({ measures }: { measures: Dict[] }) => measures.length
+  ? <div className="tablewrap" style={{ marginTop: 8 }}><table><thead><tr><th>KPI</th><th>Better when</th><th>Target</th><th>Scale-up</th><th>Stop limit</th></tr></thead><tbody>
+    {measures.map((m: Dict, i: number) => <tr key={i}><td>{m.name}</td><td className="small">{m.dir === 'lower' ? 'Lower' : 'Higher'}</td>
+      <td>{m.target ?? <span className="muted">to confirm</span>}</td><td>{m.scaleUp ?? <span className="muted">none</span>}</td><td>{m.stop ?? <span className="muted">to confirm</span>}</td></tr>)}
+  </tbody></table></div> : <p className="muted small">No KPIs yet.</p>;
+
 export function UseCaseView({ d }: { d: CaseDetail }) {
   const { boot, name } = useApp();
   const c = d.case, f = c.form || {};
+  const t = f.template || {};
   const R = boot.rules;
   const label = (opts: { id: string; label: string }[], id: string) => opts.find(o => o.id === id)?.label || id;
   if (c.stage === 'suggestion') return <div className="card"><h2>The idea</h2><p style={{ whiteSpace: 'pre-wrap' }}>{c.idea}</p></div>;
   const answers = (R.questions || []).filter((q: Dict) => f.answers && q.id in f.answers).map((q: Dict) => {
     const a = f.answers[q.id], opts = boot.questionOptions[q.id] || [];
-    const t = Array.isArray(a) ? a : [q.type === 'yesno' ? (a === true ? 'yes' : a === false ? 'no' : a) : a];
-    return [q.short || q.text, t.map(x => opts.find(o => o.id === x)?.label || String(x)).join(', ')] as [string, string];
+    const tk = Array.isArray(a) ? a : [q.type === 'yesno' ? (a === true ? 'yes' : a === false ? 'no' : a) : a];
+    return [q.short || q.text, tk.map(x => opts.find(o => o.id === x)?.label || String(x)).join(', ')] as [string, string];
   });
+  const tf = (group: string) => TEMPLATE_FIELDS.filter(x => x[2] === group).map(([k, l]) => [l, t[k]] as [string, React.ReactNode]);
   return (
     <div className="stack">
-      <div className="card"><h2>About the idea</h2><KV rows={[
-        ['Type', label(R.ucTypes || [], f.ucType)], ['Problem', f.problem], ['Proposed solution', f.solution], ['Business case', f.businessCase],
-        ['Success metric', f.successMetric], ['Data required', f.dataRequired], ['Process', f.process], ['Users', f.users],
-        ['Owner', name(f.ownerId) || f.owner], ['Sponsor', f.sponsor], ['Reach', label(boot.scopeOpts, f.scope)], ['Autonomy', label(boot.autonomyOpts, f.autonomy)],
-        ['Alternatives', f.alternatives], ['Cost of doing nothing', f.costOfNothing]]} /></div>
-      <div className="card"><h2>Cost and value</h2><KV rows={[
+      <Section title="Use case details" rows={[
+        ['Type', label(R.ucTypes || [], f.ucType)], ['Problem (business objective)', f.problem], ['Proposed solution (description)', f.solution],
+        ['Business case (expected benefits)', f.businessCase], ['Success metric', f.successMetric]]}>
+        <h3 style={{ margin: '12px 0 0' }}>KPIs</h3><KpiTable measures={f.measures || []} /></Section>
+      <Section title="Stakeholders" rows={[['Owner', name(f.ownerId) || f.owner], ['Executive sponsor', f.sponsor], ...tf('stake'),
+        ['Process', f.process], ['Users', f.users]]} />
+      <Section title="Tools and implementation" rows={tf('impl')} />
+      <Section title="Costs, risks and data" rows={[
         ['Value per year', money(f.valueUSD)], ['One-time cost', money(f.costUSD)],
         ['Running cost', f.ongoingCostUSD !== '' && f.ongoingCostUSD != null ? money(f.ongoingCostUSD) + ' ' + (boot.ongoingBasis[f.ongoingBasis] || '') : ''],
-        ['Budget source', f.budgetSource], ['Three-year return', d.roi?.cost ? `${money(d.roi.net)} net (${Math.round(d.roi.roi * 100)}%)` : '']]} />
-        {d.budgetFlag && <p className="callout warn" style={{ marginTop: 8 }}>Running cost is ${d.budgetFlag.amount} per user per month, above the ${d.budgetFlag.limit} limit.</p>}</div>
-      <div className="card"><h2>KPIs</h2>{(f.measures || []).length ? <p>{measuresText(f.measures)}</p> : <p className="muted">No KPIs yet.</p>}</div>
-      {answers.length > 0 && <div className="card"><h2>Risk answers</h2><KV rows={answers} /></div>}
+        ['Budget source', f.budgetSource], ['Three-year return', d.roi?.cost ? `${money(d.roi.net)} net (${Math.round(d.roi.roi * 100)}%)` : ''],
+        ...tf('risk'), ['Data required', f.dataRequired], ['Reach', label(boot.scopeOpts, f.scope)], ['Autonomy', label(boot.autonomyOpts, f.autonomy)],
+        ['Alternatives', f.alternatives], ['Cost of doing nothing', f.costOfNothing]]}>
+        {d.budgetFlag && <p className="callout warn" style={{ marginTop: 8 }}>Running cost is ${d.budgetFlag.amount} per user per month, above the ${d.budgetFlag.limit} limit.</p>}</Section>
+      {answers.length > 0 && <Section title="Risk answers" rows={answers} open={false} />}
     </div>
   );
 }
@@ -61,6 +86,7 @@ export function Assessment({ d }: { d: CaseDetail }) {
       {c.triage && <div className="card"><h2>Triage</h2>
         {(c.triage.flags || []).length ? <ul style={{ margin: 0, paddingLeft: 18 }}>{c.triage.flags.map((fl: Dict) => <li key={fl.id}>{fl.text}{fl.blocker ? <span className="chip bad" style={{ marginLeft: 6 }}>Guardrail</span> : null}</li>)}</ul>
           : <p className="muted">No flags.</p>}<p className="small muted" style={{ marginTop: 6 }}>Triaged {fdate(c.triage.at)}.</p></div>}
+      <TierSensitivity d={d} />
     </div>
   );
 }
@@ -73,9 +99,10 @@ export function ControlsEvidence({ d, onRemoveEvidence }: { d: CaseDetail; onRem
     <div className="stack">
       <div className="card"><h2>Claimed controls</h2>
         {d.support?.net != null && <p className="small" style={{ marginBottom: 8 }}>Counting only confirmed or evidenced controls, the remaining risk is <b>{d.support.net}</b> ({boot.tierLabels[d.support.netTier] || d.support.netTier}).</p>}
-        {rows.length ? <div className="tablewrap"><table><thead><tr><th>Control</th><th>Status</th><th>Confirmer</th><th>Credit</th></tr></thead><tbody>
+        {rows.length ? <div className="tablewrap"><table><thead><tr><th>Control</th><th>Confirmation</th><th>Proof</th><th>Confirmer</th><th>Credit</th></tr></thead><tbody>
           {rows.map((r: Dict) => <tr key={r.id}><td>{r.text}{r.na && <span className="chip" style={{ marginLeft: 6 }}>Does not apply</span>}{r.required && <span className="chip warn" style={{ marginLeft: 6 }}>Required</span>}</td>
-            <td><span className={'chip ' + (STATUS_CLS[r.status] || '')}>{boot.ctlStatus[r.status]}</span>{r.pending && <div className="small muted">Waiting on {name(r.asked)}</div>}</td>
+            <td><span className={'chip ' + (STATUS_CLS[r.status] || '')}>{r.status === 'evidence' ? 'Not confirmed; evidence counts' : boot.ctlStatus[r.status]}</span>{r.pending && <div className="small muted">Waiting on {name(r.asked)}</div>}</td>
+            <td><ProofChip proof={r.proof} />{r.proof === 'note' && <div className="small muted">{(c.form?.evidence || {})[r.id]}</div>}</td>
             <td className="small">{r.asked ? name(r.asked) : <span className="muted">None</span>}</td><td>{r.credit}</td></tr>)}
         </tbody></table></div> : <p className="muted">No controls claimed.</p>}
       </div>
@@ -123,6 +150,7 @@ export function Reviews({ d }: { d: CaseDetail }) {
           {k.response && <div className="small"><span className="muted">Response ({k.response.stance}):</span> {k.response.text || <span className="muted">Hidden from your role</span>}</div>}
         </div>)}</div> : <p className="muted">No one has been consulted.</p>}
       </div>
+      <IndependenceCheck d={d} />
       <div className="card"><h2>Decisions</h2>
         {decisions.filter(([, x]) => x).length || c.pilot || c.production || c.closed ? <div className="stack" style={{ gap: 8 }}>
           {decisions.filter(([, x]) => x).map(([l, x]) => <div key={l} className="pnote"><b>{l}</b> <span className="muted small">{name(x!.by)}, {fdate(x!.at)}</span>

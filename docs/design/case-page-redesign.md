@@ -1,6 +1,6 @@
 # Case page redesign notes and the UAT additions
 
-**Branch:** `uat/scenarios-2026-11` (fork of `RenuBandaru/aura-mvp`). **Status:** notes and a sketch for team discussion; the redesign is not built. Everything in this repository is invented sample data. Client-specific material (real cases, names, contacts, interview notes) is kept in the team's private repository and is referred to here by document name only.
+**Branch:** `uat/scenarios-2026-11` (fork of `RenuBandaru/aura-mvp`). **Status:** built on branch `ui/case-page-redesign` (all eleven changes). The stable pre-redesign version is branch `uat/scenarios-2026-11` (tag `uat-baseline-2026-11-11`). Everything in this repository is invented sample data. Client-specific material (real cases, names, contacts, interview notes) is kept in the team's private repository and is referred to here by document name only.
 
 ## What this branch adds, and why
 
@@ -47,7 +47,7 @@ The client asked to run one of its real, customer-facing cases (a vendor AI supp
 6. No fields for parts of the client's template: tools and technologies, implementation plan, risks and concerns, worst case, stakeholders and project SMEs, data volume and quality.
 7. The Use case tab is one long flat list.
 8. The decision dialog is learned by trial and error; *Record my decision* opens even when a firm vote is impossible.
-9. After switching *Viewing as* on the same case, the hold message stayed until reload (defect to confirm).
+9. After switching *Viewing as* on the same case, the hold message once stayed until reload. Re-tested with normal timing: the page updates correctly; the stale view came from switching people before the expert's answer had finished saving.
 10. Only some KPIs have targets and stop limits.
 11. Nothing explains what would change the tier, which sponsors and reviewers need to discuss it.
 
@@ -66,6 +66,13 @@ The client asked to run one of its real, customer-facing cases (a vendor AI supp
 | 9 | Independence check visible (no case stakeholder reviews their own case) | conflict of duty | Screen only |
 | 10 | All template KPIs listed, "to confirm" where targets are missing | 10 | New fields |
 | 11 | "What would change the tier" sensitivity | 11 | Small engine addition |
+
+## Where each change lives in the code
+
+- API (`api/aura_api/views.py`, decided on the server as the repository rules require): `holding_view`, `readiness_view`, `independence_view`, `tier_sensitivity`, `proof_of` / `support_with_proof`, all returned by `case_detail`. Tests: `tests/api/test_case_page_views.py`.
+- Screens: `web/src/components/CaseRedesign.tsx` (holding panel, readiness checklist, proof chip, independence check, tier note), `CaseSections.tsx` (grouped Use case tab, KPI table, proof column, expert areas, labeled residual, conditions), `CasePage.tsx` (panel placement, firm-decision reason), `FormEditor.tsx` (new *Template details* section).
+- Template fields are optional and stored under `form.template` (business area, technical owner, project SMEs, end users, tools, implementation plan, risks, worst case, data volume, data quality). They do not change the score and are absent from the default sample, so the build 27 equivalence checks are unchanged.
+- Scenario files can give each consulted area its own question (`"questions": {"ca_ai": "..."}`).
 
 ## Open decisions (team)
 

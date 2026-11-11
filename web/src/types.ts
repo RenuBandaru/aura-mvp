@@ -79,6 +79,10 @@ export interface CaseDetail {
   roi: Dict;
   budgetFlag: Dict | null;
   auditCheck: { ok: boolean; entries: number; [k: string]: any };
+  holding: Dict | null;
+  readiness: Dict[] | null;
+  independence: { checked: number; issues: Dict[] };
+  sensitivity: Dict[];
 }
 
 export interface Mail { ts: number; n?: number; to: string[]; subject: string; body: string; kind?: string; ref: { id: string; title: string } }

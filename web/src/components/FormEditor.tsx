@@ -8,14 +8,15 @@ import { post } from '../api';
 import { useApp } from '../state';
 import type { Dict } from '../types';
 import { MeasuresEditor, toRows } from './MeasuresEditor';
+import { TEMPLATE_FIELDS } from './CaseSections';
 
-const SECTIONS: [string, string][] = [['about', 'The idea'], ['cost', 'Cost'], ['measures', 'KPIs'], ['risk', 'Risk'], ['ready', 'Data'], ['controls', 'Controls']];
+const SECTIONS: [string, string][] = [['about', 'The idea'], ['details', 'Template details'], ['cost', 'Cost'], ['measures', 'KPIs'], ['risk', 'Risk'], ['ready', 'Data'], ['controls', 'Controls']];
 const OWNER_ROLES = ['submitter', 'stakeholder', 'exec'];
 
 /** What the editor holds: the case form, with KPIs as editable text rows. */
 export type DraftForm = Dict;
 export const draftFrom = (form: Dict): DraftForm => ({ ...form, measures: toRows(form.measures), answers: { ...(form.answers || {}) },
-  readiness: { ...(form.readiness || {}) }, controls: [...(form.controls || [])], attesters: { ...(form.attesters || {}) }, evidence: { ...(form.evidence || {}) } });
+  readiness: { ...(form.readiness || {}) }, template: { ...(form.template || {}) }, controls: [...(form.controls || [])], attesters: { ...(form.attesters || {}) }, evidence: { ...(form.evidence || {}) } });
 
 /** The current answer as the token the inputs use: yes/no questions store true and false. */
 const token = (q: Dict, a: unknown) => (q.type === 'yesno' ? (a === true ? 'yes' : a === false ? 'no' : a) : a);
@@ -88,6 +89,12 @@ export function FormEditor({ caseId, form, setForm, onPreview }: {
         {S('scope', 'Who it reaches', boot.scopeOpts)}{S('autonomy', 'What it can do on its own', boot.autonomyOpts)}
         {N('valueUSD', 'Expected value per year (USD)')}
         {T('alternatives', 'Alternatives considered', true)}{T('costOfNothing', 'Cost of doing nothing', true)}
+      </div>}
+
+      {sec === 'details' && <div className="formgrid">
+        <p className="small muted wide">Optional. These follow the client's use-case template; they are shown on the case page and do not change the score.</p>
+        {TEMPLATE_FIELDS.map(([k, l]) => <div key={k} className="field wide"><label htmlFor={'uft_' + k}>{l}</label>
+          <textarea id={'uft_' + k} value={(form.template || {})[k] ?? ''} onChange={e => setIn('template', k, e.target.value || undefined)} /></div>)}
       </div>}
 
       {sec === 'cost' && <div className="formgrid">

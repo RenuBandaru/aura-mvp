@@ -143,6 +143,104 @@ def review_view(c: dict, rules: dict, now: int) -> dict | None:
     }
 
 
+def proof_of(c: dict, cid: str) -> str:
+    """How a claimed control is backed: 'file' (uploaded file or link), 'note' (only a typed evidence note) or 'none'."""
+    if any(e.get("controlId") == cid for e in c.get("evidenceItems") or []):
+        return "file"
+    return "note" if str(((c.get("form") or {}).get("evidence") or {}).get(cid) or "").strip() else "none"
+
+
+def support_with_proof(c: dict, rules: dict) -> dict:
+    """The claimed-controls view, with each row's proof state named apart from its confirmation status."""
+    sv = controls.support_view(c, rules)
+    return {**sv, "rows": [{**r, "proof": proof_of(c, r["id"])} for r in sv["rows"]]}
+
+
+def holding_view(c: dict, rules: dict) -> dict | None:
+    """Who the decision is waiting on, grouped by job: experts to answer, reviewers to decide, confirmers to confirm."""
+    if c["stage"] not in ("vetting", "panel", "exec"):
+        return None
+    answer = [{"personId": k["personId"], "title": constants.by_id(k["personId"]).get("title", ""), "kind": k.get("kind"),
+               "holds": k.get("kind") == "sme" and k.get("required") is not False, "status": k.get("status")}
+              for k in c.get("consults") or [] if not k.get("supersededBy")]
+    decide, need = [], None
+    if c["stage"] in ("panel", "exec"):
+        votes = E.rev_votes(c)
+        need = E.rev_need(c, rules)
+        decide = [{"personId": pid, "dec": (votes.get(pid) or {}).get("dec"), "firm": bool((votes.get(pid) or {}).get("firm")),
+                   "label": review.dec_label((votes.get(pid) or {}).get("dec"), c.get("tier"), c["stage"]) if votes.get(pid) else ""}
+                  for pid in E.rev_pool(c)]
+    confirm: dict = {}
+    for r in controls.support_view(c, rules)["rows"]:
+        if r["pending"] and r["asked"]:
+            confirm.setdefault(r["asked"], []).append(r["short"])
+    return {"answer": answer, "decide": decide, "need": need,
+            "confirm": [{"personId": pid, "controls": shorts} for pid, shorts in confirm.items()],
+            "firmBlocked": E.rev_blockers(c, rules)["hard"] if c["stage"] == "panel" else []}
+
+
+def readiness_view(c: dict, rules: dict) -> list[dict] | None:
+    """A checklist of what a firm approval at panel review still needs, in the order reviewers meet it."""
+    if c["stage"] != "panel":
+        return None
+    bl = E.rev_blockers(c, rules)
+    gaps = E.terms_gaps(c, rules, "approve")
+    votes = E.rev_votes(c)
+    firm = sum(1 for v in votes.values() if v.get("firm") and v.get("dec") in ("approve", "waive", "recommend"))
+    need = E.rev_need(c, rules)
+    return [
+        {"label": "Required experts asked", "ok": not bl["missing"], "detail": ", ".join(bl["missing"])},
+        {"label": "Required and held experts answered", "ok": not bl["pend"], "detail": review.expert_names(bl["pend"]) if bl["pend"] else ""},
+        {"label": "Approval terms complete and open items accepted", "ok": not gaps, "detail": _short_gaps(gaps)},
+        {"label": f"Firm approvals: {firm} of {need}", "ok": firm >= need, "detail": ""},
+    ]
+
+
+def _short_gaps(gaps: list[str]) -> str:
+    """'3 open items to accept; terms to complete: production conditions' rather than every item in full."""
+    accept = [g for g in gaps if g.startswith("Accept or resolve:")]
+    terms = [g for g in gaps if not g.startswith("Accept or resolve:")]
+    parts = []
+    if accept:
+        parts.append(f"{len(accept)} open item{'s' if len(accept) != 1 else ''} to accept with a reason")
+    if terms:
+        parts.append("terms to complete: " + ", ".join(t.lower() for t in terms))
+    return "; ".join(parts)
+
+
+def independence_view(c: dict) -> dict:
+    """Whether anyone asked to review or advise on this case is also a party to it (conflict of duty)."""
+    checks = [(pid, "panel") for pid in (E.rev_pool(c) if c["stage"] in ("panel", "exec") else [])]
+    checks += [(k["personId"], "expert") for k in c.get("consults") or [] if k.get("kind") == "sme" and not k.get("supersededBy")]
+    issues = [{"personId": pid, "reason": people.duty_block(c, pid, kind)} for pid, kind in checks if people.duty_block(c, pid, kind)]
+    return {"checked": len(checks), "issues": issues}
+
+
+def tier_sensitivity(c: dict, rules: dict) -> list[dict]:
+    """What the score and tier would be with less autonomy or a narrower reach. Information for reviewers, not advice."""
+    form = c.get("form") or {}
+    if not c.get("scoring") or c["stage"] == "suggestion":
+        return []
+    base = E.run_scoring(form, rules)
+    aut = [o["id"] for o in constants.AUTONOMY_OPTS]
+    scope = [o["id"] for o in constants.SCOPE_OPTS]
+    variants = []
+    cur_a = form.get("autonomy")
+    if cur_a in aut:
+        for a in aut[: aut.index(cur_a)][::-1]:
+            variants.append(("If it " + next(o["label"] for o in constants.AUTONOMY_OPTS if o["id"] == a).lower(), {**form, "autonomy": a}))
+    cur_s = form.get("scope")
+    if cur_s in scope and scope.index(cur_s) > 0:
+        s2 = scope[scope.index(cur_s) - 1]
+        variants.append(("If its reach were: " + next(o["label"] for o in constants.SCOPE_OPTS if o["id"] == s2).lower(), {**form, "scope": s2}))
+    out = []
+    for label, f in variants:
+        sc = E.run_scoring(f, rules)
+        if sc["inherent"] != base["inherent"] or sc["tier"] != base["tier"]:
+            out.append({"change": label, "score": sc["inherent"], "tier": sc["tier"]})
+    return out
+
+
 def case_detail(c: dict, viewer: dict, ctx: dict) -> dict:
     """Everything the case page shows, computed once on the server."""
     rules, now = ctx["rules"], ctx["now"]
@@ -155,7 +253,7 @@ def case_detail(c: dict, viewer: dict, ctx: dict) -> dict:
         "editable": c["stage"] == "use_case" and any(a["id"] in ("submit", "signoff_accept") for a in acts),
         "waitingOn": waiting_for(c, ctx),
         "scoring": E.run_scoring(form, rules, c.get("attestations")) if c["stage"] not in ("suggestion",) else None,
-        "support": controls.support_view(c, rules),
+        "support": support_with_proof(c, rules),
         "measures": E.measure_board(c),
         "stopFlags": [r["m"]["name"] for r in E.measure_flags(c)],
         "consultNeeds": E.consult_needs(form, rules),
@@ -163,6 +261,10 @@ def case_detail(c: dict, viewer: dict, ctx: dict) -> dict:
         "roi": E.three_year_roi(form),
         "budgetFlag": E.budget_flag(form, rules),
         "auditCheck": E.verify_audit(c),
+        "holding": holding_view(c, rules),
+        "readiness": readiness_view(c, rules),
+        "independence": independence_view(c),
+        "sensitivity": tier_sensitivity(c, rules),
     }
 
 

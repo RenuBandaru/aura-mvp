@@ -403,7 +403,19 @@
       "scaleUp": 40,
       "stop": 10
      }
-    ]
+    ],
+    "template": {
+     "businessArea": "Customer support",
+     "technicalOwner": "Engineering manager (role)",
+     "projectSmes": "Support manager, marketing director (roles)",
+     "endUsers": "Device owners by chat and phone; support associates",
+     "tools": "Vendor support AI (website chat, then phone), ticketing integration",
+     "implementationPlan": "Vendor analysis; data-terms review; proof of concept; limited pilot with human review; rollout",
+     "risks": "Wrong troubleshooting advice; mitigated by limited topics, human handoff and review of conversations",
+     "worstCase": "Confident wrong instructions during an active leak",
+     "dataVolume": "Moderate: past tickets and ongoing conversations",
+     "dataQuality": "Knowledge base needs clean-up before launch"
+    }
    },
    "steps": [
     {
@@ -434,7 +446,11 @@
      "hold": [
       "ca_ai"
      ],
-     "question": "Could the assistant give unsafe troubleshooting advice, and how is that prevented?"
+     "question": "Could the assistant give unsafe troubleshooting advice, and how is that prevented?",
+     "questions": {
+      "ca_ai": "Could the assistant give unsafe troubleshooting advice, and how is that prevented?",
+      "ca_cs": "Is the handoff to support associates workable at higher volume?"
+     }
     }
    ]
   }

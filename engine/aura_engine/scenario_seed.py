@@ -19,7 +19,8 @@ A scenario file is JSON::
             {"do": "develop", "by": "p_jordan", "daysAgo": 9},
             {"do": "submit", "by": "p_dana", "daysAgo": 8},
             {"do": "vet_to_panel", "by": "p_elena", "daysAgo": 7, "input": {"note": "..."}},
-            {"do": "consult", "daysAgo": 6, "smes": ["ca_ai"], "hold": ["ca_ai"], "question": "..."},
+            {"do": "consult", "daysAgo": 6, "smes": ["ca_ai"], "hold": ["ca_ai"], "question": "...",
+             "questions": {"ca_ai": "a question for this area only"}},
             {"do": "respond", "by": "p_mina", "daysAgo": 5, "stance": "concerns", "text": "..."}
           ]
         }
@@ -45,7 +46,7 @@ from .jsx import clone, js_json
 from .people import assign_adviser
 from .seed import _Builder, build_seed
 
-STEP_KEYS = {"do", "by", "daysAgo", "input", "smes", "hold", "stakeholders", "question", "stance", "text"}
+STEP_KEYS = {"do", "by", "daysAgo", "input", "smes", "hold", "stakeholders", "question", "questions", "stance", "text"}
 CASE_KEYS = {"id", "title", "idea", "submitter", "daysAgo", "legacy", "form", "steps", "note"}
 FORM_EXTRA = {"yes", "answers", "ready"}
 SCENARIO_RULES_VERSION = 2
@@ -118,6 +119,8 @@ def _run_step(b: _ScenarioBuilder, h: dict, form: dict, st: dict) -> None:
         inp = {"smes": st.get("smes", []), "stakeholders": st.get("stakeholders", []), "question": st.get("question", "")}
         if "hold" in st:
             inp["reqSmes"] = st["hold"]
+        if "questions" in st:  # a separate question for each area or person: {"ca_ai": "...", "ca_cs": "..."}
+            inp["questions"] = st["questions"]
         b.step(h, days, st.get("by", "p_elena"), "consult", inp)
     elif act == "respond":
         b.reply(h, days, st["by"], st.get("stance", "support"), st.get("text", ""))
