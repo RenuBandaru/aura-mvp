@@ -17,6 +17,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { RulesPage } from './pages/RulesPage';
 
 const START_AS = 'p_dana';
+// Viewing as is grouped by role, in build 27's order, and each person shows their title (as in build 27's ui.js).
+const VIEW_AS_GROUPS = ['submitter', 'adviser', 'lead', 'panel', 'sme', 'stakeholder', 'exec', 'auditor', 'admin'];
 const remembered = () => { try { return localStorage.getItem('aura.as') || START_AS; } catch { return START_AS; } };
 
 export function App() {
@@ -79,7 +81,14 @@ export function App() {
         <div className="brand"><span className="bar" /><b>AURA</b><span className="small">AI use case governance (sample data)</span></div>
         <label className="viewas small">Viewing as
           <select value={state.me.id} onChange={e => switchTo(e.target.value)}>
-            {state.boot.people.map(p => <option key={p.id} value={p.id}>{p.name}, {p.roleLabel}</option>)}
+            {VIEW_AS_GROUPS.map(r => {
+              const people = state.boot.people.filter(p => p.role === r);
+              return people.length > 0 && (
+                <optgroup key={r} label={state.boot.roleLabels[r] || r}>
+                  {people.map(p => <option key={p.id} value={p.id}>{p.name}{p.title && r !== 'admin' ? ', ' + p.title : ''}</option>)}
+                </optgroup>
+              );
+            })}
           </select>
         </label>
       </header>
