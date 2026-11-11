@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA case page sketch</title>
+<style>
+:root{--navy:#004677;--navy2:#0a5a93;--yellow:#ffc20e;--ylight:#fff6d6;--blue:#b2c7d6;--bluel:#e9f0f5;--grey:#aaaaaa;--ink:#1c2733;--muted:#5d6b78;--line:#dde4ea;--bg:#f3f6f9;--card:#fff;--red:#a8321e;--redl:#fbe8e4;--green:#1f7a4d;--greenl:#e3f4ea}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",Arial,Helvetica,sans-serif}
+.top{background:var(--navy);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:10px 20px;gap:10px;flex-wrap:wrap}
+.top b{font-size:18px;letter-spacing:.5px}.top .bar{display:inline-block;width:4px;height:20px;background:var(--yellow);margin-right:10px;vertical-align:middle}
+.viewas{font-size:13px}.viewas select{margin-left:8px;padding:4px 6px;border-radius:4px;border:0;font-size:13px;max-width:240px}
+.note{background:var(--yellow);color:var(--navy);font-weight:700;font-size:11px;border-radius:10px;padding:1px 7px;margin-left:6px;white-space:nowrap;cursor:help}
+.wrap{max-width:1320px;margin:0 auto;padding:16px 16px 40px}
+.legend{background:var(--ylight);border:1px solid var(--yellow);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.head h1{margin:2px 0 6px;font-size:24px;color:var(--navy)}.id{font-family:ui-monospace,Menlo,monospace;color:var(--muted);font-size:13px}
+.tier{display:inline-block;background:var(--redl);color:var(--red);border:1px solid #e9b3a8;border-radius:6px;padding:2px 10px;font-weight:700}
+.stages{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 2px}.stages span{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:3px 11px;font-size:12px;color:var(--muted)}
+.stages .done{background:var(--bluel);color:var(--navy);border-color:var(--blue)}.stages .now{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.stages .next{border-style:dashed}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;margin-top:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:16px;color:var(--navy);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.card h3{margin:14px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.hold{border-left:5px solid var(--yellow)}
+.holdgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.holdcol{background:var(--bg);border-radius:8px;padding:8px 10px}
+.holdcol h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;color:var(--navy);letter-spacing:.05em}
+.person{display:flex;justify-content:space-between;gap:6px;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px}.person:last-child{border:0}
+.person small{color:var(--muted);display:block}
+.pill{border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600;white-space:nowrap;align-self:center}
+.wait{background:var(--ylight);color:#7a5a00;border:1px solid #f0d47a}.ok{background:var(--greenl);color:var(--green);border:1px solid #b9e0c9}
+.blk{background:var(--redl);color:var(--red);border:1px solid #e9b3a8}.grey{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--line);margin-bottom:12px;flex-wrap:wrap}
+.tabs button{background:none;border:0;padding:8px 12px;font:inherit;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+.tabs button.on{color:var(--navy);font-weight:700;border-bottom-color:var(--yellow)}
+.panel{display:none}.panel.on{display:block}
+dl{display:grid;grid-template-columns:190px minmax(0,1fr);gap:6px 14px;margin:0}dt{color:var(--muted)}dd{margin:0}
+.sec{border:1px solid var(--line);border-radius:8px;margin-bottom:10px}
+.sec summary{cursor:pointer;padding:9px 12px;font-weight:700;color:var(--navy);list-style:none;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sec summary::-webkit-details-marker{display:none}.sec summary .cnt{font-weight:400;color:var(--muted);font-size:12px}
+.sec .body{padding:4px 12px 12px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.score{display:flex;gap:14px;align-items:stretch;flex-wrap:wrap}
+.big{background:var(--bg);border-radius:8px;padding:10px 14px;min-width:150px}.big b{font-size:28px;color:var(--navy);display:block}.big span{color:var(--muted);font-size:12px}
+.bars div{display:flex;align-items:center;gap:8px;font-size:13px;margin:3px 0}.bars i{display:inline-block;height:10px;background:var(--navy2);border-radius:3px;flex:none}
+.cond{background:var(--ylight);border:1px solid #f0d47a;border-radius:8px;padding:8px 10px;font-size:13px;margin-top:8px}
+.btn{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:7px;padding:8px 10px;margin:6px 0;font:inherit;cursor:pointer}
+.btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}.btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn small{display:block;font-size:11px;opacity:.85}
+.check{list-style:none;padding:0;margin:0}.check li{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:13px}
+.check .box{width:16px;height:16px;border-radius:4px;border:2px solid var(--grey);flex:none;margin-top:2px}.check .box.y{background:var(--green);border-color:var(--green)}
+.progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0 10px}.progress i{display:block;height:100%;background:var(--yellow)}
+.ev{font-size:12px}.muted{color:var(--muted)}
+.tag{font-size:11px;border-radius:4px;padding:0 5px;background:var(--bluel);color:var(--navy);margin-left:4px}
+.changes{columns:2;column-gap:28px;font-size:13px}.changes li{break-inside:avoid;margin-bottom:6px}
+@media (max-width:980px){.grid{grid-template-columns:1fr}.holdgrid{grid-template-columns:1fr}.changes{columns:1}dl{grid-template-columns:1fr}}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--ink:#e6edf3;--muted:#9fb0bf;--bg:#0f1720;--card:#16212c;--line:#2a3846;--bluel:#1b3346;--ylight:#3a3014;--redl:#3d1f1a;--greenl:#163323;--navy:#1d5f93}}
+</style>
+</head>
+<body>
+<div class="top"><div><span class="bar"></span><b>AURA</b> <span style="font-size:12px;opacity:.85">AI use case governance</span></div>
+<label class="viewas">Viewing as<select><optgroup label="Governance lead"><option>Elena Duarte, Governance lead, panel chair</option></optgroup><optgroup label="Subject matter expert"><option>Mina Kowalski, AI safety</option></optgroup></select></label></div>
+
+<div class="wrap">
+<div class="legend"><b>Sketch, not built.</b> Invented example case (a customer-facing vendor support assistant). Yellow numbered badges <span class="note">1</span> mark changes from the current screen; hover a badge for the reason. The full list is at the bottom and in the redesign notes (docs/design/case-page-redesign.md).</div>
+
+<div class="head">
+ <div>
+  <div class="id">EX-03 · example case</div>
+  <h1>Customer troubleshooting assistant</h1>
+  <div class="stages"><span class="done">Suggestion</span><span class="done">Use case</span><span class="done">Triage</span><span class="done">Vetting</span><span class="now">Panel review</span><span class="next">Executive review</span><span>Pilot</span><span>Production</span></div>
+ </div>
+ <div style="text-align:right"><span class="tier">Critical · 16 points</span><div class="muted" style="font-size:12px;margin-top:6px">Route: panel recommends, then 3 executives decide</div></div>
+</div>
+
+<div class="grid">
+<main>
+ <div class="card hold">
+  <h2>What is holding the decision <span class="note" title="Today 'Waiting for' mixes reviewers, experts and control confirmers in one list. Grouping by job shows who blocks what.">4</span></h2>
+  <div class="holdgrid">
+   <div class="holdcol"><h4>Answer (experts)</h4>
+    <div class="person"><div>Mina Kowalski<small>AI safety · required</small></div><span class="pill blk">Holds · waiting</span></div>
+    <div class="person"><div>Omar Reyes<small>Data steward · required</small></div><span class="pill ok">Answered</span></div>
+    <div class="person"><div>Claire Dubois<small>Legal · required</small></div><span class="pill ok">Answered</span></div>
+    <div class="person"><div>Adaeze Okoro<small>Customer service</small></div><span class="pill grey">Waiting · no hold</span></div>
+    <div class="person"><div>Rosa Albright<small>Contracts</small></div><span class="pill grey">Waiting · no hold</span></div>
+   </div>
+   <div class="holdcol"><h4>Decide (panel, 3 needed)</h4>
+    <div class="person"><div>Elena Duarte<small>Lead, chair</small></div><span class="pill grey">Not yet</span></div>
+    <div class="person"><div>Sam Okafor<small>Panel reviewer</small></div><span class="pill grey">Not yet</span></div>
+    <div class="person"><div>Naomi Park<small>Panel reviewer</small></div><span class="pill grey">Not yet</span></div>
+    <p class="muted" style="font-size:12px;margin:6px 0 0">Firm decisions open when Mina answers.</p>
+   </div>
+   <div class="holdcol"><h4>Confirm (controls)</h4>
+    <div class="person"><div>Jack Tran<small>Human review · testing</small></div><span class="pill wait">2 to confirm</span></div>
+    <div class="person"><div>Claire Dubois<small>Topics and handoff · data sharing</small></div><span class="pill wait">2 to confirm</span></div>
+    <div class="person"><div>Ravi Menon<small>Rollback</small></div><span class="pill wait">1 to confirm</span></div>
+    <p class="muted" style="font-size:12px;margin:6px 0 0">Unconfirmed controls become risks to accept.</p>
+   </div>
+  </div>
+ </div>
+
+ <div class="card">
+  <div class="tabs" id="tabs"><button class="on" data-t="uc">Use case</button><button data-t="as">Assessment</button><button data-t="ct">Controls and evidence</button><button data-t="rv">Reviews and decisions</button><button data-t="ac">Activity</button><button data-t="em">Emails (16)</button></div>
+
+  <div class="panel on" id="uc">
+   <p class="muted" style="margin:0 0 10px">Sections follow the client's use-case template <span class="note" title="Today the Use case tab is one long list of fields and has no place for several template sections. Grouping it like the template makes it scannable.">7</span></p>
+   <details class="sec" open><summary>Use case details <span class="cnt">objective · description · benefits · KPIs</span></summary><div class="body"><dl>
+    <dt>Business objective</dt><dd>Support a fast-growing number of device owners without growing support headcount at the same rate.</dd>
+    <dt>Description</dt><dd>A vendor support AI answers device owners by website chat first, then phone; resolves Tier-1 questions (setup, common troubleshooting, account status) and hands complex or ambiguous issues to support associates. Logs conversations and creates tickets.</dd>
+    <dt>Expected benefits</dt><dd>24/7 answers, fewer repetitive calls, cost well under one hire, higher customer and employee satisfaction.</dd>
+    <dt>KPIs <span class="note" title="Today only two KPIs have targets; the rest sit in a text field. Showing all with 'to confirm' makes gaps visible.">10</span></dt><dd><div class="tw">
+     <table><tr><th>KPI</th><th>Target</th><th>Stop limit</th></tr>
+     <tr><td>Contacts resolved without handoff</td><td>30% (scale at 45%)</td><td>below 10%</td></tr>
+     <tr><td>Unsafe troubleshooting answers found in review</td><td>0</td><td>1</td></tr>
+     <tr><td>Customer satisfaction, AI vs. human</td><td class="muted">to confirm</td><td class="muted">to confirm</td></tr>
+     <tr><td>Handle and first-response time</td><td class="muted">to confirm</td><td class="muted">to confirm</td></tr>
+     <tr><td>Cost per contact</td><td class="muted">to confirm</td><td class="muted">to confirm</td></tr>
+     </table></div></dd>
+   </dl></div></details>
+
+   <details class="sec" open><summary><span>Stakeholders <span class="note" title="Today AURA has only owner and sponsor. The template also names a technical owner, project SMEs and end users; independence is checked against all of them.">6</span></span><span class="cnt">people on the case (cannot review it)</span></summary><div class="body"><dl>
+    <dt>Business area</dt><dd>Customer support, marketing</dd>
+    <dt>Executive sponsor</dt><dd>Victor Shaw <span class="tag">persona</span></dd>
+    <dt>Business owner</dt><dd>Priya Nair <span class="tag">persona</span></dd>
+    <dt>Technical owner</dt><dd>Engineering manager <span class="tag">role only</span></dd>
+    <dt>Project SMEs</dt><dd>Support manager, marketing director, engineering manager <span class="tag">roles only</span></dd>
+    <dt>End users</dt><dd>Device owners by chat and phone; support associates</dd>
+   </dl><p class="muted" style="font-size:12px;margin:8px 0 0">Anyone listed here is skipped when experts and reviewers are assigned.</p></div></details>
+
+   <details class="sec"><summary><span>Tools and implementation <span class="note" title="No field today for tools and technologies or the implementation plan.">6</span></span><span class="cnt">tools · plan · timeline</span></summary><div class="body"><dl>
+    <dt>Tools and technologies</dt><dd>Vendor support AI (website chat and phone assistant), ticketing integration, optional call-platform link. Alternatives reviewed: call-platform AI receptionist, others.</dd>
+    <dt>Implementation plan</dt><dd>1 vendor analysis · 2 data-protection and terms review · 3 proof of concept · 4 limited pilot with human review · 5 rollout, chat first, then phone, before the next product launch.</dd>
+   </dl></div></details>
+
+   <details class="sec" open><summary><span>Costs, risks and data <span class="note" title="No field today for risks, worst case, data volume or quality; they were folded into other text.">6</span></span><span class="cnt">cost · risks · worst case · data</span></summary><div class="body"><dl>
+    <dt>Costs</dt><dd>Subscription of a few thousand dollars a month with a capped yearly increase. Value well above cost.</dd>
+    <dt>Risks and concerns</dt><dd>Wrong or misleading troubleshooting advice; mitigated by human escalation, limited Tier-1 topics, review of conversations and monitoring.</dd>
+    <dt>Worst case</dt><dd>Confident wrong instructions during an active leak or shutoff: property damage, safety issue, loss of trust.</dd>
+    <dt>Data sources</dt><dd>Tickets and knowledge base, recorded support calls, manuals and FAQs, possibly account and device status. Customer personal data. Vendor must not train on it.</dd>
+    <dt>Volume and quality</dt><dd>Moderate; tickets and knowledge base need clean-up before launch.</dd>
+   </dl></div></details>
+  </div>
+
+  <div class="panel" id="as">
+   <div class="score">
+    <div class="big"><b>16</b><span>Inherent risk → <b style="font-size:13px;display:inline;color:var(--red)">Critical</b></span></div>
+    <div class="big"><b>9</b><span>Remaining risk, proven controls only <span class="note" title="Today Assessment shows 2 (Low, counting every claimed control) while Controls shows 9 (High, counting only proven ones). Show one number, labeled, with the other as a detail.">2</span></span><br><span class="muted">2 if every claimed control is proven</span></div>
+   </div>
+   <h3>Why 16</h3>
+   <div class="bars">
+    <div><i style="width:60px"></i>+3 Customers or the public</div><div><i style="width:60px"></i>+3 Acts on its own</div>
+    <div><i style="width:60px"></i>+3 Wrong or misleading answers possible</div><div><i style="width:60px"></i>+3 Customer personal data</div>
+    <div><i style="width:40px"></i>+2 Acts on customer records (creates tickets)</div><div><i style="width:20px"></i>+1 Content used outside the company</div><div><i style="width:20px"></i>+1 Records conversations</div>
+   </div>
+   <div class="cond"><b>Condition to clear before pilot:</b> add the vendor tool to the approved AI tool list. <span class="note" title="Today this condition is calculated but not shown on the case page; it only appears inside the decision dialog.">5</span></div>
+   <h3>What would change the tier</h3>
+   <p style="margin:0;font-size:13px">If an associate approves each answer: about 12 (High). Shown to reviewers as a sensitivity, not a recommendation. <span class="note" title="Helps explain a tier to sponsors (for example 'low risk' vs. 'significant change').">11</span></p>
+  </div>
+
+  <div class="panel" id="ct"><div class="tw">
+   <table>
+    <tr><th>Control</th><th>Proof <span class="note" title="Today a control says 'Has evidence' while the Evidence list says 'No evidence yet' (a typed note vs. an uploaded file). Name the two states differently.">3</span></th><th>Confirmer</th><th>Credit</th></tr>
+    <tr><td>Answers limited to approved topics; customers can reach a person <span class="tag">required</span></td><td><span class="pill wait">Note only</span><div class="ev muted">"Escalation path to a service agent"</div></td><td>Claire Dubois · waiting</td><td>3</td></tr>
+    <tr><td>Qualified person reviews outputs <span class="tag">required</span></td><td><span class="pill grey">None yet</span></td><td>Jack Tran · waiting</td><td>3</td></tr>
+    <tr><td>Approved data sharing <span class="tag">required</span></td><td><span class="pill wait">Note only</span></td><td>Claire Dubois · waiting</td><td>2</td></tr>
+    <tr><td>Backup or rollback <span class="tag">required</span></td><td><span class="pill wait">Note only</span></td><td>Ravi Menon · waiting</td><td>2</td></tr>
+    <tr><td>Tested on real examples before launch</td><td><span class="pill grey">None yet</span></td><td>Jack Tran · waiting</td><td>2</td></tr>
+    <tr><td>Model documented <span class="tag">required</span></td><td><span class="pill grey">None yet</span></td><td class="muted">no confirmer</td><td>1</td></tr>
+    <tr><td>Inputs and outputs logged</td><td><span class="pill ok">File attached</span><div class="ev muted">(example of the third state)</div></td><td class="muted">none needed</td><td>1</td></tr>
+   </table></div>
+  </div>
+
+  <div class="panel" id="rv">
+   <h3 style="margin-top:0">Experts <span class="note" title="Today expert cards say only 'Expert'. Show the area, and the question asked of that area.">1</span></h3>
+   <div class="tw"><table>
+    <tr><th>Expert</th><th>Question asked</th><th>Status</th></tr>
+    <tr><td><b>Mina Kowalski</b><br><span class="muted">AI safety · required · holds</span></td><td>Could the assistant give unsafe troubleshooting advice during a leak or shutoff? What limits and handoff rules prevent it?</td><td><span class="pill blk">Waiting · due Nov 4</span></td></tr>
+    <tr><td><b>Omar Reyes</b><br><span class="muted">Data steward · required</span></td><td>Which customer data reaches the vendor, where is it stored, for how long?</td><td><span class="pill ok">No concerns</span><div class="ev">"Masking in place."</div></td></tr>
+    <tr><td><b>Claire Dubois</b><br><span class="muted">Legal · required</span></td><td>Do the vendor terms cover consent and no training on our data?</td><td><span class="pill ok">No concerns</span><div class="ev">"Consent language reviewed."</div></td></tr>
+    <tr><td><b>Adaeze Okoro</b><br><span class="muted">Customer service · recommended</span></td><td>Is the handoff to associates workable at four times the volume?</td><td><span class="pill grey">Waiting · no hold</span></td></tr>
+   </table></div>
+   <h3>Independence check <span class="note" title="Shows that people on the case were not assigned as their own reviewers (conflict of duty).">9</span></h3>
+   <p style="margin:0;font-size:13px" class="muted">No one on this panel or expert list is a stakeholder of the case. ✓</p>
+  </div>
+
+  <div class="panel" id="ac"><p class="muted">Unchanged: audit trail, newest first, with the hash-chain check ("all 9 entries are intact").</p></div>
+  <div class="panel" id="em"><p class="muted">Unchanged: simulated outbox (consult requests, panel task, responses).</p></div>
+ </div>
+</main>
+
+<aside>
+ <div class="card">
+  <h2>Your next step</h2>
+  <p class="muted" style="font-size:12px;margin:0 0 4px">Elena, governance lead</p>
+  <button class="btn" disabled>Record a firm decision<small>Opens after Mina Kowalski (AI safety) answers</small></button>
+  <button class="btn">Record a leaning decision</button>
+  <button class="btn primary">Send reminder to Mina Kowalski<small>Due Nov 4 · overdue</small></button>
+  <button class="btn">Consult another expert</button>
+  <button class="btn">Add evidence</button>
+  <p class="muted" style="font-size:12px;margin:6px 0 0">Disabled buttons say why <span class="note" title="Today 'Record my decision' opens and then refuses a firm vote with an error. Saying why up front avoids the dead end.">8</span></p>
+ </div>
+ <div class="card">
+  <h2>Ready to decide? <span class="note" title="Today the decision dialog has six tabs and refuses 'Save' until every open item is accepted. A checklist shows progress before you open it.">8</span></h2>
+  <div class="progress"><i style="width:33%"></i></div>
+  <ul class="check">
+   <li><span class="box y"></span>Required experts asked</li>
+   <li><span class="box y"></span>Legal and data steward answered</li>
+   <li><span class="box"></span>AI safety answered</li>
+   <li><span class="box"></span>Pilot scope and length set</li>
+   <li><span class="box"></span>KPIs and stop limits agreed</li>
+   <li><span class="box"></span>6 open risks accepted with a reason</li>
+  </ul>
+ </div>
+ <div class="card">
+  <h2>Facts</h2>
+  <dl style="grid-template-columns:90px minmax(0,1fr);font-size:13px">
+   <dt>Stage</dt><dd>Panel review, since Oct 30</dd><dt>Due</dt><dd>Nov 13, 2026</dd><dt>Adviser</dt><dd>Grant Mercer</dd><dt>Owner</dt><dd>Priya Nair</dd>
+  </dl>
+ </div>
+</aside>
+</div>
+
+<div class="card">
+ <h2>What changed from the current screen</h2>
+ <ol class="changes">
+  <li><b>Expert area shown</b> on every expert card and in Viewing as (the menu part is already done in our fork).</li>
+  <li><b>One residual number</b>, clearly labeled (proven controls only), with the optimistic figure as a detail.</li>
+  <li><b>Proof states named apart:</b> "None yet", "Note only", "File attached", so the controls table and Evidence list agree.</li>
+  <li><b>"What is holding the decision"</b> panel grouped by job: Answer, Decide, Confirm, with holds in red.</li>
+  <li><b>Condition to clear</b> shown on the case page, not only inside the decision dialog.</li>
+  <li><b>Client template sections:</b> stakeholders (technical owner, project SMEs, end users), tools and implementation, risks, worst case, data volume and quality.</li>
+  <li><b>Use case tab grouped</b> like the template, with collapsible sections.</li>
+  <li><b>Next step explains itself:</b> disabled buttons say why; a "Ready to decide?" checklist replaces trial and error in the decision dialog.</li>
+  <li><b>Independence check visible:</b> confirms no case stakeholder reviews their own case.</li>
+  <li><b>All KPIs listed</b>, with "to confirm" where targets are missing.</li>
+  <li><b>Tier sensitivity</b> ("what would change the tier") to explain the route to sponsors.</li>
+ </ol>
+ <p class="muted" style="font-size:12px;margin:8px 0 0">Not built. Items 1 (cards), 2–5, 8, 9 are screen changes only (the engine already computes the data). Items 6, 7, 10 need new form fields. Item 11 needs a small engine addition.</p>
+</div>
+</div>
+<script>
+document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id===b.dataset.t));});
+</script>
+</body>
+</html>
