@@ -41,9 +41,9 @@ Then open http://localhost:7071.
 
 ## 4. Please review
 
-1. **Case page:** open **EX-03** (customer troubleshooting assistant) as Elena Duarte. Is the holding panel and checklist clearer for the onsite demo? Should Monday's demo use the redesign branch or the baseline?
-2. **Expert hold:** switch to Mina Kowalski, answer the consult, then switch back to Elena. Does the flow make sense?
-3. **Template fields:** check the Use case tab sections and the new *Template details* section in the form. Is anything missing from the client's template?
+1. **Case page:** open **EX-03** (customer troubleshooting assistant with an expert hold) as Elena Duarte. Look at every tab: holding panel, checklist, Assessment (condition to clear, what would change the tier), Controls (proof states), Reviews (expert areas, their own questions, independence check). Is the holding panel and checklist clearer for the onsite demo? Should Monday's demo use the redesign branch or the baseline?
+2. **Expert hold:** try **Record my decision** as Elena with *Firm* (AURA refuses while AI safety is pending). Switch to **Mina Kowalski**, choose **Respond to consult (required)** and answer, then switch back to Elena: the hold clears and the checklist updates. Does the flow make sense?
+3. **Template fields:** in EX-03, check the Use case tab sections (Stakeholders, Tools and implementation, Costs, risks and data). Then switch to **Dana Whitfield**, open **EX-02** (a returned draft she can edit), and open the form's new **Template details** tab. Is anything missing from the client's template?
 
 ## 5. Decisions needed
 

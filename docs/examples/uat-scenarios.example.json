@@ -387,7 +387,8 @@
     "answers": {
      "q_model": "yes",
      "q_outside": "yes",
-     "q_tools": "no"
+     "q_tools": "no",
+     "q_listed": "pending"
     },
     "controls": [
      "c_human",
@@ -449,7 +450,34 @@
      "question": "Could the assistant give unsafe troubleshooting advice, and how is that prevented?",
      "questions": {
       "ca_ai": "Could the assistant give unsafe troubleshooting advice, and how is that prevented?",
-      "ca_cs": "Is the handoff to support associates workable at higher volume?"
+      "ca_cs": "Is the handoff to support associates workable at higher volume?",
+      "ca_legal": "Do the vendor terms cover customer consent and no training on our data?",
+      "ca_data": "Which customer data reaches the vendor, where is it stored and for how long?"
+     }
+    },
+    {
+     "do": "respond",
+     "by": "p_omar",
+     "daysAgo": 5,
+     "stance": "support",
+     "text": "Customer data is masked before it reaches the vendor; kept 30 days."
+    },
+    {
+     "do": "respond",
+     "by": "p_claire",
+     "daysAgo": 5,
+     "stance": "support",
+     "text": "Consent language and a no-training clause are in the draft terms."
+    },
+    {
+     "do": "add_evidence",
+     "by": "p_priya",
+     "daysAgo": 5,
+     "input": {
+      "controlId": "c_log",
+      "url": "https://example.com/logging-plan",
+      "name": "Logging plan",
+      "note": "Conversation logging and retention plan."
      }
     }
    ]
