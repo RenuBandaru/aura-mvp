@@ -50,4 +50,3 @@ Then open http://localhost:7071.
 1. **Template fields:** keep them in the redesign as built, or simplify before Monday?
 2. **Technical owner and project SMEs:** show them in AURA as role titles (current) or as made-up personas?
 3. **KPI targets:** should we ask the case sponsors for targets and stop limits on the remaining KPIs?
-4. **Proposing to Renu's `main`:** when should we open a PR, and which branch?
