@@ -1,13 +1,13 @@
 # Case page redesign notes and the UAT additions
 
-**Branch:** `uat/scenarios-2026-11` (fork of `RenuBandaru/aura-mvp`). **Status:** notes and a sketch for team discussion; the redesign is not built. Everything in this repository is invented sample data. Client-specific material (real cases, names, contacts, interview notes) is kept in the team's private repository and is referred to here by document name only.
+**Branch:** `uat/scenarios-2026-11` (fork of `RenuBandaru/aura-mvp`). **Status:** notes and a sketch for team discussion; the redesign is not built. Everything in this repository is invented sample data. No client data, names or cases are in this repository.
 
 ## What this branch adds, and why
 
 | Addition | Why |
 |---|---|
-| Seven sample experts: Contracts, Intellectual property, Product engineering and firmware, Connected products engineering, Marketing and customer communications, Sales, Customer service (`constants.ADDED_EXPERTS`) | The client named specialists for these areas. AURA had experts only for cybersecurity, legal, IT standards, data, AI safety and operations, so consults in those areas had nobody to go to. Fictional names; the mapping to real contacts is private (*SME routing – cases and decisions*; the UAT workbook's *SME crosswalk* sheet). |
-| Opt-in scenario data: `python api/dev_server.py --scenarios FILE` (`aura_engine/scenario_seed.py`) | User acceptance testing needs realistic cases at specific stages without changing the default sample. Each scenario case is built by taking the real actions, so it has a real audit trail; *Reset to sample data* restores the sample plus the scenarios. The client's 20-scenario file is private; `docs/examples/uat-scenarios.example.json` is an invented example. |
+| Seven sample experts: Contracts, Intellectual property, Product engineering and firmware, Connected products engineering, Marketing and customer communications, Sales, Customer service (`constants.ADDED_EXPERTS`) | The client named specialists for these areas. AURA had experts only for cybersecurity, legal, IT standards, data, AI safety and operations, so consults in those areas had nobody to go to. Fictional names. |
+| Opt-in scenario data: `python api/dev_server.py --scenarios FILE` (`aura_engine/scenario_seed.py`) | User acceptance testing needs realistic cases at specific stages without changing the default sample. Each scenario case is built by taking the real actions, so it has a real audit trail; *Reset to sample data* restores the sample plus the scenarios. `docs/examples/uat-scenarios.example.json` is an invented example. |
 | Consult areas for the added experts (in the scenario file, not the default rules) | Routes questions to the new experts without changing the default rules or the build 27 equivalence checks. |
 | **Viewing as** grouped by role, with each person's title | With 31 sample people, experts were indistinguishable ("Subject matter expert"). Matches build 27's wireframe. |
 | Audit log filter accepts any case id | Scenario cases use ids other than `UC-…`. |
@@ -16,7 +16,7 @@ Tests: 4,657 pass. The two build 27 equivalence checks affected by the added peo
 
 ## Why we looked at the case page
 
-The client asked to run one of its real, customer-facing cases (a vendor AI support assistant) through the new process and AURA at an onsite review. Preparing it showed that AURA's intake form does not match the client's use-case template, and that the case page leaves people to work out what is holding a decision. We walked through the case as the governance lead and recorded what made it hard to explain. The full walkthrough with the real case is private: *AURA case page redesign rationale 2026-11-11*.
+The client asked to run one of its real, customer-facing cases (a vendor AI support assistant) through the new process and AURA at an onsite review. Preparing it showed that AURA's intake form does not match the client's use-case template, and that the case page leaves people to work out what is holding a decision. We walked through the case as the governance lead and recorded what made it hard to explain.
 
 ## How the case page works today
 
@@ -72,11 +72,3 @@ The client asked to run one of its real, customer-facing cases (a vendor AI supp
 1. Template fields now in this fork, or after the onsite as a proposal to `main`?
 2. Show technical owner and project SMEs as fictional personas or as role titles?
 3. Build the screen-only changes (1–5, 8, 9) first?
-
-## Private companion documents (team repository, not here)
-
-- *AURA case page redesign rationale 2026-11-11* (the real-case walkthrough behind these notes)
-- *AURA v0.3 UAT draft 2026-11-09* (tester guide for the 20 client scenarios)
-- The Chapter 9 UAT workbook (matrix, tester steps, SME crosswalk, conflict of duty, design gaps)
-- *SME routing – cases and decisions* (UAT task matrix with positions, personas and contacts)
-- Client case interview prep and the scenario generators (`scripts/uat`)
