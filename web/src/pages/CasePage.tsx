@@ -35,6 +35,8 @@ export function CasePage({ id }: { id: string }) {
   const [showGaps, setShowGaps] = useState(false);
 
   useEffect(() => { setD(data); setDraft(data?.editable ? draftFrom(data.case.form) : null); setShowGaps(false); }, [data]);
+  // A dialog belongs to the person who opened it: close it when Viewing as switches to someone else.
+  useEffect(() => { setOpen(null); setEvidence(false); setIpAsk(null); }, [me.id]);
 
   if (error) return <div className="stack"><BackLink /><div className="callout bad">{error}</div></div>;
   if (!d) return <p className="muted">Loading...</p>;
