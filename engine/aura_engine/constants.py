@@ -3,9 +3,10 @@
 Nothing here changes while the app runs. The editable policy (questions, rules, points,
 deadlines) lives in the rules object built by :func:`aura_engine.rules.default_rules`.
 
-The sample people are invented. They stand in for real Bradford White staff until the app signs
-people in with Entra ID (see the implementation plan). Their ids, such as ``p_elena``, appear in
-every sample case and in the tests, so they must not change.
+The sample people are invented. Their ids, such as ``p_elena``, appear in every sample case and in
+the tests, so they must not change. :data:`PEOPLE` starts as the sample people; the API swaps in the
+people its data holds with :func:`use_people`, so an admin can add real people on the deployed site
+without any names entering this repository.
 """
 
 from __future__ import annotations
@@ -65,6 +66,27 @@ PEOPLE = [
     _p("p_mina", "u_eng", "Mina Kowalski", "sme", "AI safety"),
     _p("p_tomas", "u_ops", "Tomas Brandt", "submitter", "New hire, plant operations"),
 ]
+
+# A frozen copy of the sample people, for resets and tests. PEOPLE itself may be swapped (use_people).
+SAMPLE_PEOPLE = tuple(dict(p) for p in PEOPLE)
+
+# Every role a person can have, in the order screens list them.
+ROLES = list(ROLE_LABEL)
+
+
+def sample_people() -> list[dict]:
+    """A fresh, editable copy of the sample people."""
+    return [dict(p) for p in SAMPLE_PEOPLE]
+
+
+def use_people(people: list[dict]) -> None:
+    """Make ``people`` the list every engine function reads (``by_id``, ``with_role``, queues, seed).
+
+    The list is replaced in place, so modules that imported :data:`PEOPLE` see the change. Not in
+    build 27, where the people were fixed; the engine still only reads the list and never changes it.
+    """
+    PEOPLE[:] = people
+
 
 # The actor recorded for automated steps, such as triage and reminders.
 SYSTEM = {"id": "system", "name": "System (automated)", "role": "system", "title": ""}
