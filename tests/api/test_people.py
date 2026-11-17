@@ -74,7 +74,7 @@ def test_import_people_merges_and_reports_bad_rows(api):
     assert out["errors"] == ["Row 6: Pick a role for No Role.", "Row 7: Give the person a name."]
     assert len(api("GET", "/api/people")[1]["people"]) == 24  # nothing changed
     status, out = api("POST", "/api/admin/people/import", body={"csv": PEOPLE_CSV})
-    assert out == {"applied": True, "added": 4, "updated": 0, "removed": 0, "ruleGaps": []}
+    assert out == {"applied": True, "added": 4, "updated": 0, "removed": 0, "ruleGaps": [], "skippedColumns": []}
     # Importing again updates the same people (matched by email) instead of adding them twice.
     again = PEOPLE_CSV.replace("Cybersecurity", "Data protection")
     assert api("POST", "/api/admin/people/import", body={"csv": again})[1]["updated"] == 4
@@ -100,7 +100,7 @@ def test_start_fresh_then_replace_people_and_import_cases(api):
     out = api("POST", "/api/admin/cases/import", body={"csv": cases})[1]
     assert out["applied"] is False and out["errors"] == ["Row 2: no submitter. Pick who logs rows without one."]
     out = api("POST", "/api/admin/cases/import", body={"csv": cases, "defaultSubmitter": "p_ada_adviser"})[1]
-    assert out == {"applied": True, "added": 2, "ids": ["UC-03", "UC-1001"]}
+    assert out == {"applied": True, "added": 2, "ids": ["UC-03", "UC-1001"], "skippedColumns": []}
     status, case = api("GET", "/api/cases/UC-03", pid="p_ada_adviser")
     assert status == 200 and case["case"]["stage"] == "suggestion" and case["case"]["idea"] == "Example chat assistant"
     # The same ID cannot be imported twice.
@@ -139,3 +139,52 @@ def test_people_survive_a_restart(tmp_path, monkeypatch):
     again = Store(path)
     assert any(p["name"] == "Jane Example" for p in again.people)
     assert any(p["name"] == "Jane Example" for p in dispatch(again, "GET", "/api/bootstrap", {}, None, {})[1]["people"])
+
+
+def test_import_cases_fills_the_form_and_adds_kpi_rows(api):
+    api("POST", "/api/admin/clear")
+    csv = ("ID,Title,Submitter email,Owner email,Executive sponsor,Type of AI use case,Who it reaches,What it can do on its own,"
+           "Problem to solve,Expected value per year (USD),One-time cost (USD),Running cost (USD),Running cost is,"
+           "KPI name,Better when,Target,Scale-up target,Stop limit,Vendor contact\r\n"
+           "UC-21,Example invoice capture,p_dana,Marcus Lee,Example sponsor,vendor,Customers or the public,Acts on its own,"
+           "Typing invoices by hand,\"$70,000\",29250,35000,\"total, per year\",Invoices read without a person (%),higher,80,90,35,someone\r\n"
+           ",,,,,,,,,,,,,Errors per 100 invoices,lower,2,,5,\r\n")
+    csv = csv.replace("p_dana", "Dana Whitfield")
+    out = api("POST", "/api/admin/cases/import", body={"csv": csv})[1]
+    assert out == {"applied": True, "added": 1, "ids": ["UC-21"], "skippedColumns": ["Vendor contact"]}
+    f = api("GET", "/api/cases/UC-21", pid="p_dana")[1]["case"]["form"]
+    assert (f["ownerId"], f["owner"], f["sponsor"], f["ucType"], f["scope"], f["autonomy"]) == \
+        ("p_marcus", "Marcus Lee", "Example sponsor", "vendor", "customer", "automate")
+    assert (f["problem"], f["valueUSD"], f["costUSD"], f["ongoingCostUSD"], f["ongoingBasis"]) == \
+        ("Typing invoices by hand", 70000, 29250, 35000, "total_year")
+    assert [(m["id"], m["name"], m["dir"], m["target"], m["scaleUp"], m["stop"]) for m in f["measures"]] == [
+        ("m1", "Invoices read without a person (%)", "higher", 80, 90, 35), ("m2", "Errors per 100 invoices", "lower", 2, None, 5)]
+
+
+def test_import_cases_lists_every_bad_value_and_changes_nothing(api):
+    before = len(api("GET", "/api/cases")[1])
+    csv = ("Title,Submitter email,Owner email,Who it reaches,One-time cost (USD),KPI name,Better when,Target,Stop limit\r\n"
+           "Example A,Dana Whitfield,Demo admin,Everyone,lots,Speed,faster,10,5\r\n"
+           ",,,,,Errors,lower,5,2\r\n")
+    out = api("POST", "/api/admin/cases/import", body={"csv": csv})[1]
+    assert out["applied"] is False and out["errors"] == [
+        'Row 2: "lots" is not an amount in dollars.',
+        "Row 2: Who it reaches \"Everyone\" is not one of: One team; One site; Whole company; Customers or the public.",
+        "Row 2: Demo admin cannot be the owner (Demo admin).",
+        "Row 2: Better when must be higher or lower for KPI \"Speed\".",
+        'Row 3: KPI "Errors": where lower is better, the stop limit must be above the target.']
+    assert len(api("GET", "/api/cases")[1]) == before
+
+
+def test_template_imports_cleanly(api):
+    api("POST", "/api/admin/people/import", body={"csv": api("GET", "/api/admin/people/template")[1]["csv"]})
+    out = api("POST", "/api/admin/cases/import", body={"csv": api("GET", "/api/admin/cases/template")[1]["csv"],
+                                                       "defaultSubmitter": "p_dana"})[1]
+    assert out["applied"] and out["added"] == 2 and out["skippedColumns"] == []
+    f = api("GET", "/api/cases/UC-90", pid="p_dana")[1]["case"]["form"]
+    assert len(f["measures"]) == 2 and f["valueUSD"] == 12000
+
+
+def test_people_import_warns_about_skipped_columns(api):
+    out = api("POST", "/api/admin/people/import", body={"csv": PEOPLE_CSV.replace("Title or area", "Title or area,Phone")})[1]
+    assert out["applied"] and out["skippedColumns"] == ["Phone"]

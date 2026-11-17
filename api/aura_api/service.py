@@ -154,11 +154,15 @@ def create_case(store: Store, pid: str, title: str, idea: str, unit_id: str | No
     return views.case_detail(nc, actor, store.ctx())
 
 
-def new_suggestion(store: Store, actor: dict, title: str, idea: str, unit_id: str | None = None, case_id: str | None = None) -> dict:
-    """Create and save a suggestion from ``actor``, and tell their adviser. Shared with the CSV import, which may keep its own ID."""
+def new_suggestion(store: Store, actor: dict, title: str, idea: str, unit_id: str | None = None, case_id: str | None = None,
+                   form: dict | None = None) -> dict:
+    """Create and save a suggestion from ``actor``, and tell their adviser. Shared with the CSV import, which may
+    keep its own ID and fill in some of the use case form (``form``) for the submitter to finish."""
     with store.lock:
         ctx = store.ctx()
         nc = E.assign_adviser(E.new_case(case_id or store.next_case_id(), title, idea, actor["id"], ctx["now"], ctx["rv"]), store.rules, unit_id or None)
+        if form:
+            nc["form"] = {**nc["form"], **form}
         if nc.get("adviserId") and nc["adviserId"] != actor["id"]:
             nc["outbox"].append({"ts": ctx["now"], "n": len(nc["outbox"]), "to": [nc["adviserId"]], "subject": "New idea in your business unit: " + title,
                                  "body": actor["name"] + " logged a new idea: " + idea, "kind": "notice", "auto": True})

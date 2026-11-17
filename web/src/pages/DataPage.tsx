@@ -9,7 +9,7 @@ import { fdatetime } from '../format';
 import { PageHead, useLoad } from '../components/bits';
 
 interface AdminInfo { clockOffsetMs: number; adminLog: { at: number; by: string; what: string }[]; storage: 'file' | 'memory'; sampleCases: number }
-interface ImportResult { applied: boolean; errors?: string[]; moreErrors?: number; added?: number; updated?: number; removed?: number; ruleGaps?: string[]; ids?: string[] }
+interface ImportResult { applied: boolean; errors?: string[]; moreErrors?: number; added?: number; updated?: number; removed?: number; ruleGaps?: string[]; ids?: string[]; skippedColumns?: string[] }
 
 export function DataPage() {
   const { me, toast, changed, reloadBoot, boot, version, name } = useApp();
@@ -75,7 +75,7 @@ export function DataPage() {
         </div>
 
         <div className="card"><h2>2. Import use cases</h2>
-          <p className="muted" style={{ marginBottom: 10 }}>A CSV with a Title column, and optionally ID, Description, Submitter email and Business unit. Each row is logged as a new suggestion from its submitter, exactly as if they had used "New suggestion", and their adviser is told. An ID such as UC-03 is kept.</p>
+          <p className="muted" style={{ marginBottom: 10 }}>A CSV with a Title column. Every other column is optional: ID, Description, Submitter email and Business unit, and any of the use case form's fields, such as Owner email, Problem to solve, costs, value and a KPI. The template lists them all. Each row is logged as a new suggestion from its submitter, with those fields filled in, and their adviser is told. An ID such as UC-03 is kept. To give a use case more KPIs, add a row under it with only the KPI columns filled. Risk answers, data readiness and controls are answered later in the form.</p>
           <button className="btn" disabled={!admin} onClick={() => downloadCsv('/admin/cases/template').catch(fail)}>Download template</button>
           <div className="grid2" style={{ marginTop: 10 }}>
             <div className="field"><label htmlFor="imp_cases">Use case CSV file</label>
@@ -94,6 +94,7 @@ export function DataPage() {
             : <><b>Nothing was imported. Fix these rows in the file and try again:</b>
               <ul style={{ margin: '4px 0 0 18px' }}>{(result.r.errors || []).map(e => <li key={e}>{e}</li>)}</ul>
               {!!result.r.moreErrors && <span>And {result.r.moreErrors} more.</span>}</>}
+          {!!result.r.skippedColumns?.length && <div className="small">These columns were not recognized, so {result.r.applied ? 'their values were not imported' : 'they will be skipped'}: {result.r.skippedColumns.join(', ')}. Check the heading spelling against the template.</div>}
           {result.r.applied && !!result.r.ruleGaps?.length && <><b>Next, update the rules:</b>
             <ul style={{ margin: '4px 0 0 18px' }}>{result.r.ruleGaps.map(g => <li key={g}>{g}</li>)}</ul></>}
         </div>}
@@ -117,7 +118,7 @@ export function DataPage() {
           <button className="btn danger" disabled={!admin} onClick={() => window.confirm('Reset ALL data, including imported people and use cases, to the samples?') && run('/admin/reset', () => 'Sample data restored.')}>Reset to sample data</button>
         </div>
         <div className="card"><h2>Tamper with the audit trail</h2>
-          <p className="muted" style={{ marginBottom: 10 }}>Edits one old audit entry directly in the saved data, the way someone with database access might, without going through the engine. Then open the Audit log and press Verify audit trail to see the hash chain catch it. Demo admin only; use it on sample data, then reset.</p>
+          <p className="muted" style={{ marginBottom: 10 }}>Edits one old audit entry directly in the saved data, the way someone with database access might, without going through the engine. Then open the Audit log and press Verify audit trail to see the hash chain catch it. Demo admin only. Use it only on the sample data, never once real use cases are loaded, then reset.</p>
           <button className="btn danger" disabled={!admin} onClick={() => run('/admin/tamper', r => `Entry ${r.entry} on ${r.caseId} was altered. Open the Audit log and run Verify audit trail.`)}>Alter one audit entry</button>
         </div>
         <div className="card"><h2>Demo clock</h2>

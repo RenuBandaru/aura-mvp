@@ -115,8 +115,8 @@ export function App() {
           </select>
         </div>
       </header>
-      <div className="banner"><span>Sample data only. All people, products and figures are invented.</span>
-        <span>Shared storage on · v0.3 build 27{clockDays > 0 ? ' · Demo clock +' + clockDays + 'd' : ''}</span></div>
+      {clockDays > 0 && <div className="banner"><span>The demo clock is {clockDays} day{clockDays === 1 ? '' : 's'} ahead, for everyone. Due dates and reminders count from that date.</span>
+        <span>Reset it on Data and demo.</span></div>}
       <div className="frame">
         <nav className="nav" aria-label="Main">
           {canCreate && <button className="btn accent" style={{ marginBottom: 10 }} onClick={() => go('new')}>+ New suggestion</button>}

@@ -58,7 +58,7 @@ export function NewSuggestionPage() {
         )}
         <div className="row"><button className="btn primary" disabled={busy || !title.trim() || !idea.trim()} onClick={submit}>Log suggestion</button>
           <button className="btn ghost" onClick={() => go('queue')}>Cancel</button></div>
-        <p className="small muted" style={{ marginTop: 8 }}>Submitting as {me.name}. Use sample data only.</p>
+        <p className="small muted" style={{ marginTop: 8 }}>Submitting as {me.name}.</p>
       </div>
     </>
   );
