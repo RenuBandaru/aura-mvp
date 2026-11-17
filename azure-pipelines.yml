@@ -1,0 +1,93 @@
+# Deploys AURA to UAT (resource group PSU_AI_UAT) from the Azure DevOps project PSU_AI_Capstone.
+#
+# It runs when main is pushed to the Azure Repos copy of this repository, and does what the manual dev
+# deploy does: run the tests, put the API and engine side by side in one zip, build the website, then
+# deploy both. The deploy stage waits for an approval on the AURA-UAT environment.
+#
+# No secrets live here. The pipeline signs in to Azure through the federated service connection, and
+# asks Azure for the Static Web App's upload token during each run (masked in the logs, never saved).
+# Real data never passes through the pipeline: it lives only in the Function App's data file.
+
+trigger:
+  branches:
+    include: [main]
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  serviceConnection: 'NAME-OF-THE-UAT-SERVICE-CONNECTION'  # Project settings, Service connections (a name, not a secret)
+  resourceGroup: 'PSU_AI_UAT'
+  functionApp: 'aura-uat-api'
+  staticWebApp: 'aura-uat-web'
+
+stages:
+- stage: Build
+  jobs:
+  - job: TestAndBuild
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.11'
+    - script: |
+        pip install -r requirements-dev.txt
+        python -m pytest
+      displayName: Run the tests
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '20.x'
+    - script: cd web && npm ci && npm run build
+      displayName: Build the website
+    - script: |
+        set -e
+        OUT=$(Build.ArtifactStagingDirectory)/api
+        mkdir -p $OUT
+        cp -R api/function_app.py api/host.json api/requirements.txt api/aura_api $OUT/
+        cp -R engine/aura_engine $OUT/
+        find $OUT -name __pycache__ -prune -exec rm -rf {} +
+        pip install --target="$OUT/.python_packages/lib/site-packages" -r api/requirements.txt
+      displayName: Put the API and engine side by side
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/api'
+        includeRootFolder: false
+        archiveFile: '$(Build.ArtifactStagingDirectory)/aura-api.zip'
+    - publish: '$(Build.ArtifactStagingDirectory)/aura-api.zip'
+      artifact: api
+    - publish: web/dist
+      artifact: web
+
+- stage: DeployUAT
+  dependsOn: Build
+  jobs:
+  - deployment: Deploy
+    environment: AURA-UAT  # add the approval check on this environment
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureFunctionApp@2
+            inputs:
+              connectedServiceNameARM: '$(serviceConnection)'
+              appType: functionAppLinux
+              appName: '$(functionApp)'
+              package: '$(Pipeline.Workspace)/api/aura-api.zip'
+              runtimeStack: 'PYTHON|3.11'
+              deploymentMethod: zipDeploy
+          - task: AzureCLI@2
+            displayName: Get the website upload token for this run only
+            inputs:
+              azureSubscription: '$(serviceConnection)'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                t=$(az staticwebapp secrets list -n $(staticWebApp) -g $(resourceGroup) --query properties.apiKey -o tsv)
+                echo "##vso[task.setvariable variable=swaToken;issecret=true]$t"
+          - task: AzureStaticWebApp@0
+            inputs:
+              workingDirectory: '$(Pipeline.Workspace)'
+              app_location: web
+              skip_app_build: true
+              skip_api_build: true
+              azure_static_web_apps_api_token: '$(swaToken)'

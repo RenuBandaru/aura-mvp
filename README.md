@@ -69,6 +69,17 @@ ctx = {"rules": E.default_rules(), "now": NOW, "rv": 1, "training": data["meta"]
 [a["label"] for a in E.actions_for(case, dana, ctx)]   # what Dana can do with this case
 ```
 
+## Deploy to UAT
+
+`azure-pipelines.yml` deploys UAT from the Azure DevOps project. It runs the tests, packages the API with
+the engine beside it, builds the website, and, after an approval on the `AURA-UAT` environment, deploys to
+the Function App and Static Web App in the UAT resource group. It signs in through a federated service
+connection and fetches the website's upload token during each run, so the repository holds no secrets.
+
+To release: test on dev, merge to `main`, download a backup on UAT, then push `main` to the Azure Repos copy
+(`git push bwc main`) and approve the run. Before the first run, set `serviceConnection` in the file to the
+service connection's name. Deploys change code only; UAT's data file stays as it is.
+
 ## How we know the port is right
 
 - `tests/equivalence`: the build 27 JavaScript engine was run on fixed inputs and every result was
