@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 from aura_engine import constants
 from aura_engine.errors import EngineError
 from aura_engine.jsx import js_json
+from aura_engine.controls import parse_measures
+from aura_engine.forms import ONGOING_BASIS
 from aura_engine.rules import norm_rules
 
 from . import views
@@ -43,13 +45,42 @@ PEOPLE_COLUMNS = {
     "role": "role", "aura role": "role", "business unit": "unit", "unit": "unit", "bu": "unit",
     "title": "title", "job title": "title", "title or area": "title", "area": "title", "area covered": "title",
 }
-# Column headings accepted in the use case CSV.
+# Column headings accepted in the use case CSV. Besides the suggestion itself (ID, title, description,
+# submitter, unit), a row can fill fields of the use case form; risk answers, readiness and controls are
+# left to the form, where AURA explains each one.
 CASE_COLUMNS = {
     "id": "id", "uc": "id", "uc id": "id", "use case id": "id", "ref": "id", "reference": "id",
     "title": "title", "heading": "title", "use case": "title", "name": "title", "description": "idea", "idea": "idea", "summary": "idea",
-    "submitter": "submitter", "submitter email": "submitter", "submitted by": "submitter", "owner": "submitter",
+    "submitter": "submitter", "submitter email": "submitter", "submitted by": "submitter",
     "business unit": "unit", "unit": "unit",
+    "problem": "problem", "problem to solve": "problem",
+    "solution": "solution", "proposed solution": "solution",
+    "business case": "businessCase",
+    "success metric": "successMetric",
+    "business process": "process", "business process affected": "process", "process": "process",
+    "who will use it": "users", "users": "users",
+    "data required": "dataRequired",
+    "alternatives": "alternatives", "alternatives considered": "alternatives",
+    "cost of doing nothing": "costOfNothing", "if not approved": "costOfNothing",
+    "executive sponsor": "sponsor", "sponsor": "sponsor",
+    "budget source": "budgetSource", "budget": "budgetSource",
+    "expected value per year (usd)": "valueUSD", "expected value per year": "valueUSD", "value per year": "valueUSD",
+    "one-time cost (usd)": "costUSD", "one-time cost": "costUSD",
+    "running cost (usd)": "ongoingCostUSD", "running cost": "ongoingCostUSD", "ongoing cost": "ongoingCostUSD",
+    "running cost is": "ongoingBasis", "running cost basis": "ongoingBasis",
+    "type of ai use case": "ucType", "type": "ucType", "use case type": "ucType",
+    "who it reaches": "scope", "reach": "scope",
+    "what it can do on its own": "autonomy", "autonomy": "autonomy",
+    "owner": "owner", "owner email": "owner",
+    "kpi": "kpiName", "kpi name": "kpiName", "better when": "kpiDir", "kpi better when": "kpiDir",
+    "target": "kpiTarget", "kpi target": "kpiTarget", "scale-up target": "kpiScaleUp", "kpi scale-up target": "kpiScaleUp",
+    "stop limit": "kpiStop", "kpi stop limit": "kpiStop",
 }
+TEXT_FIELDS = ("problem", "solution", "businessCase", "successMetric", "process", "users", "dataRequired", "alternatives",
+               "costOfNothing", "sponsor", "budgetSource")
+MONEY_FIELDS = ("valueUSD", "costUSD", "ongoingCostUSD")
+OWNER_ROLES = ("submitter", "stakeholder", "exec")  # who the form lets you pick as owner
+KPI_KEYS = ("kpiName", "kpiDir", "kpiTarget", "kpiScaleUp", "kpiStop")
 
 PEOPLE_TEMPLATE = [
     ["Name", "Email", "Role", "Business unit", "Title or area"],
@@ -58,10 +89,24 @@ PEOPLE_TEMPLATE = [
     ["Alex Sample", "alex.sample@example.com", "Submitter", "Plant operations and manufacturing", "Line supervisor"],
 ]
 CASES_TEMPLATE = [
-    ["ID", "Title", "Description", "Submitter email", "Business unit"],
+    ["ID", "Title", "Description", "Submitter email", "Business unit", "Owner email", "Executive sponsor",
+     "Type of AI use case", "Who it reaches", "What it can do on its own", "Problem to solve", "Proposed solution",
+     "Business case", "Success metric", "Business process affected", "Who will use it", "Data required",
+     "Alternatives considered", "Cost of doing nothing", "Expected value per year (USD)", "One-time cost (USD)",
+     "Running cost (USD)", "Running cost is", "Budget source", "KPI name", "Better when", "Target", "Scale-up target",
+     "Stop limit"],
     ["UC-90", "Example: draft maintenance summaries", "Summarize technician notes into a weekly report for the plant manager.",
-     "alex.sample@example.com", "Plant operations and manufacturing"],
-    ["", "Example: answer questions about product manuals", "", "", ""],
+     "alex.sample@example.com", "Plant operations and manufacturing", "alex.sample@example.com", "Example sponsor",
+     "Using an AI tool to analyze, write or research", "One site", "Gives advice only",
+     "Weekly summaries take a supervisor about two hours.", "An approved AI assistant drafts the summary from the notes.",
+     "Saves about 100 supervisor hours a year.", "Time to produce the weekly summary.", "Maintenance reporting",
+     "Maintenance supervisors", "Technician notes from the maintenance log", "Keep writing them by hand",
+     "Supervisor time stays on reports", "12000", "0", "1200", "total, per year", "Operations budget",
+     "Minutes to produce the summary", "lower", "20", "10", "90"],
+    # A row with no ID and no title adds another KPI to the use case above it.
+    ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+     "Edits needed per summary", "lower", "5", "", "15"],
+    ["", "Example: answer questions about product manuals"] + [""] * 27,
 ]
 CASE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,19}$")
 
@@ -219,14 +264,16 @@ def delete_person(store: Store, pid: str, target: str) -> dict:
 
 # ---- CSV ----
 
-def _read_csv(text: str, columns: dict) -> tuple[list[tuple[int, dict]], list[str]]:
-    """Rows as {field: value} with their line numbers, plus problems with the headings."""
+def _read_csv(text: str, columns: dict) -> tuple[list[tuple[int, dict]], list[str], list[str]]:
+    """Rows as {field: value} with their line numbers, problems with the file, and the headings that
+    match no field (their columns are skipped, and the import says so)."""
     text = (text or "").lstrip("﻿")
     if not text.strip():
-        return [], ["The file is empty."]
+        return [], ["The file is empty."], []
     reader = csv.reader(io.StringIO(text))
     head = next(reader, [])
     fields = [columns.get(_norm(h).lower()) for h in head]
+    skipped = [_norm(h) for h, f in zip(head, fields) if not f and _norm(h)]
     rows = []
     for line, cells in enumerate(reader, start=2):
         if not any(_norm(c) for c in cells):
@@ -236,7 +283,7 @@ def _read_csv(text: str, columns: dict) -> tuple[list[tuple[int, dict]], list[st
             if f and not row.get(f):
                 row[f] = _norm(c)
         rows.append((line, row))
-    return rows, []
+    return rows, [], skipped
 
 
 def _csv_text(rows: list[list[str]]) -> str:
@@ -269,7 +316,7 @@ def import_people(store: Store, pid: str, text: str, mode: str = "merge") -> dic
     People are matched by email, then by name. Nothing changes unless every row is valid.
     """
     _admin(pid)
-    rows, errors = _read_csv(text, PEOPLE_COLUMNS)
+    rows, errors, skipped = _read_csv(text, PEOPLE_COLUMNS)
     if not errors and not rows:
         errors.append("The file has headings but no people.")
     with store.lock:
@@ -309,54 +356,152 @@ def import_people(store: Store, pid: str, text: str, mode: str = "merge") -> dic
                     removed.append(p["id"])
             people = [p for p in people if p["id"] not in removed]
         if errors:
-            return {"applied": False, "errors": errors[:MAX_ERRORS], "moreErrors": max(0, len(errors) - MAX_ERRORS)}
+            return {"applied": False, "errors": errors[:MAX_ERRORS], "moreErrors": max(0, len(errors) - MAX_ERRORS), "skippedColumns": skipped}
         store.data["people"] = people
         store.activate()
+        store.log_admin(pid, "Imported people (" + str(added) + " added, " + str(updated) + " updated, " + str(len(removed)) + " removed)")
         store.save()
-    return {"applied": True, "added": added, "updated": updated, "removed": len(removed), "ruleGaps": rule_gaps(store)}
+    return {"applied": True, "added": added, "updated": updated, "removed": len(removed), "ruleGaps": rule_gaps(store), "skippedColumns": skipped}
+
+
+def _pick(text: str, options: list[dict]) -> str | None:
+    """An option's id from its id or its label (any case); '' for blank; None when it matches nothing."""
+    t = _norm(text).lower()
+    if not t:
+        return ""
+    return next((o["id"] for o in options if t in (o["id"].lower(), o["label"].lower())), None)
+
+
+def _find_person(people: list[dict], text: str) -> dict | None:
+    t = text.lower()
+    return next((x for x in people if t and (x.get("email", "").lower() == t or x["name"].lower() == t)), None)
+
+
+def _case_form(store: Store, raw: dict, problems: list[str]) -> dict:
+    """The use case form fields a row fills. Anything wrong goes into ``problems``."""
+    form: dict = {k: raw[k] for k in TEXT_FIELDS if raw.get(k)}
+    for k in MONEY_FIELDS:
+        if raw.get(k):
+            n = re.sub(r"[$,\s]", "", raw[k])
+            try:
+                v = float(n)
+                if v < 0:
+                    raise ValueError
+                form[k] = int(v) if v.is_integer() else v
+            except ValueError:
+                problems.append("\"" + raw[k] + "\" is not an amount in dollars")
+    picks = [("ucType", store.rules.get("ucTypes") or [], "Type of AI use case"),
+             ("scope", constants.SCOPE_OPTS, "Who it reaches"),
+             ("autonomy", constants.AUTONOMY_OPTS, "What it can do on its own"),
+             ("ongoingBasis", [{"id": k, "label": v} for k, v in ONGOING_BASIS.items()], "Running cost is")]
+    for k, opts, label in picks:
+        if raw.get(k):
+            v = _pick(raw[k], opts)
+            if v:
+                form[k] = v
+            else:
+                problems.append(label + " \"" + raw[k] + "\" is not one of: " + "; ".join(o["label"] for o in opts))
+    if raw.get("owner"):
+        o = _find_person(store.people, raw["owner"])
+        if not o:
+            problems.append("no one in the people list has the owner email or name \"" + raw["owner"] + "\"")
+        elif o["role"] not in OWNER_ROLES:
+            problems.append(o["name"] + " cannot be the owner (" + constants.ROLE_LABEL.get(o["role"], o["role"]) + ")")
+        else:
+            form["owner"], form["ownerId"] = o["name"], o["id"]
+    return form
+
+
+def _kpi(raw: dict, problems: list[str]) -> dict | None:
+    """The KPI a row gives, checked the way the form checks it, or None when the row has no KPI."""
+    if not any(raw.get(k) for k in KPI_KEYS):
+        return None
+    if not raw.get("kpiName"):
+        problems.append("a KPI needs a name")
+        return None
+    d = _norm(raw.get("kpiDir")).lower()
+    direction = "higher" if d in ("higher", "higher is better", "up") else "lower" if d in ("lower", "lower is better", "down") else None
+    if direction is None:
+        problems.append("Better when must be higher or lower for KPI \"" + raw["kpiName"] + "\"")
+        return None
+    try:
+        m = parse_measures([{"name": raw["kpiName"], "dir": direction, "target": raw.get("kpiTarget", ""),
+                             "scaleUp": raw.get("kpiScaleUp", ""), "stop": raw.get("kpiStop", "")}], True)
+    except EngineError as e:
+        problems.append(e.message)
+        return None
+    return m[0]
 
 
 def import_cases(store: Store, pid: str, text: str, default_submitter: str | None = None) -> dict:
-    """Log each row as a new suggestion from its submitter, exactly as if they used "New suggestion".
+    """Log each row as a new suggestion from its submitter, exactly as if they used "New suggestion",
+    with any use case form fields the row gives already filled in.
 
     Only a title is required. A blank description uses the title; a blank submitter uses
-    ``default_submitter``; a given ID (such as ``UC-03``) is kept when no other case has it.
+    ``default_submitter``; a given ID (such as ``UC-03``) is kept when no other case has it. A row with
+    no ID and no title adds one more KPI to the use case above it. Nothing changes unless every row is valid.
     """
     _admin(pid)
-    rows, errors = _read_csv(text, CASE_COLUMNS)
+    rows, errors, skipped = _read_csv(text, CASE_COLUMNS)
     if not errors and not rows:
         errors.append("The file has headings but no use cases.")
     fallback = store.person(default_submitter) if default_submitter else None
     taken = {c["id"].lower() for c in store.cases}
-    plan = []
+    plan: list[dict] = []
     for line, raw in rows:
+        row = "Row " + str(line) + ": "
+        problems: list[str] = []
+        if not raw.get("title") and not raw.get("id") and any(raw.get(k) for k in KPI_KEYS):
+            kpi = _kpi(raw, problems)
+            if not plan and not errors:
+                errors.append(row + "a KPI row must come after the use case it belongs to.")
+            elif problems:
+                errors += [row + x.rstrip(".") + "." for x in problems]
+            elif kpi and plan:
+                plan[-1]["form"].setdefault("measures", []).append(kpi)
+            continue
         who = raw.get("submitter", "").lower()
-        p = next((x for x in store.people if who and (x.get("email", "").lower() == who or x["name"].lower() == who)), None) if who else fallback
+        p = _find_person(store.people, who) if who else fallback
         unit = _unit_id(store.rules, raw.get("unit", ""))
         cid = raw.get("id", "")
         if not raw.get("title"):
-            errors.append("Row " + str(line) + ": add a title.")
-        elif cid and not CASE_ID.match(cid):
-            errors.append("Row " + str(line) + ": \"" + cid + "\" cannot be used as an ID. Use letters, numbers and dashes, such as UC-03.")
+            errors.append(row + "add a title.")
+            continue
+        if cid and not CASE_ID.match(cid):
+            problems.append("\"" + cid + "\" cannot be used as an ID. Use letters, numbers and dashes, such as UC-03")
         elif cid and cid.lower() in taken:
-            errors.append("Row " + str(line) + ": another use case already has the ID " + cid + ".")
-        elif not p and who:
-            errors.append("Row " + str(line) + ": no one in the people list has the email or name \"" + raw.get("submitter", "") + "\". Import the people first.")
+            problems.append("another use case already has the ID " + cid)
+        if not p and who:
+            problems.append("no one in the people list has the email or name \"" + raw.get("submitter", "") + "\". Import the people first")
         elif not p:
-            errors.append("Row " + str(line) + ": no submitter. Pick who logs rows without one.")
+            problems.append("no submitter. Pick who logs rows without one")
         elif p["role"] in ("admin", "auditor"):
-            errors.append("Row " + str(line) + ": " + p["name"] + " has a role that cannot log suggestions.")
-        elif unit is None:
-            errors.append("Row " + str(line) + ": \"" + raw.get("unit", "") + "\" is not one of the business units.")
-        else:
-            if cid:
-                taken.add(cid.lower())
-            plan.append((cid or None, p, raw["title"], raw.get("idea") or raw["title"], unit))
+            problems.append(p["name"] + " has a role that cannot log suggestions")
+        if unit is None:
+            problems.append("\"" + raw.get("unit", "") + "\" is not one of the business units")
+        form = _case_form(store, raw, problems)
+        kpi = _kpi(raw, problems)
+        if problems:
+            errors += [row + x.rstrip(".") + "." for x in problems]
+            plan.append({"form": {}})  # keeps KPI rows under this one from attaching to the case before it
+            continue
+        if cid:
+            taken.add(cid.lower())
+        if kpi:
+            form["measures"] = [kpi]
+        plan.append({"id": cid or None, "who": p, "title": raw["title"], "idea": raw.get("idea") or raw["title"], "unit": unit, "form": form})
     if errors:
-        return {"applied": False, "errors": errors[:MAX_ERRORS], "moreErrors": max(0, len(errors) - MAX_ERRORS)}
+        return {"applied": False, "errors": errors[:MAX_ERRORS], "moreErrors": max(0, len(errors) - MAX_ERRORS), "skippedColumns": skipped}
     from .service import new_suggestion  # here, not at the top: service imports this module
-    ids = [new_suggestion(store, p, title, idea, unit, cid)["id"] for cid, p, title, idea, unit in plan]
-    return {"applied": True, "added": len(ids), "ids": ids}
+    ids = []
+    for x in plan:
+        for i, m in enumerate(x["form"].get("measures") or []):
+            m["id"] = "m" + str(i + 1)
+        ids.append(new_suggestion(store, x["who"], x["title"], x["idea"], x["unit"], x["id"], x["form"])["id"])
+    with store.lock:
+        store.log_admin(pid, "Imported " + str(len(ids)) + " use case(s)")
+        store.save()
+    return {"applied": True, "added": len(ids), "ids": ids, "skippedColumns": skipped}
 
 
 # ---- whole data set ----
@@ -386,7 +531,11 @@ def restore(store: Store, pid: str, data) -> dict:
         norm_rules(data["rules"])
     except Exception:
         raise EngineError("The rules in that backup cannot be read.")
+    prev = store.data["meta"].get("adminLog") or []
     store.replace_all(data)
+    with store.lock:
+        store.log_admin(pid, "Restored a backup (" + str(len(data["cases"])) + " use cases)", prev)
+        store.save()
     return {"ok": True, "cases": len(data["cases"]), "people": len(data["people"])}
 
 
@@ -396,5 +545,6 @@ def clear_samples(store: Store, pid: str) -> dict:
     with store.lock:
         n = len(store.cases)
         store.data["cases"], store.data["tools"], store.data["files"] = [], [], []
+        store.log_admin(pid, "Removed " + str(n) + " use case(s) and every AI tool")
         store.save()
     return {"ok": True, "removed": n}

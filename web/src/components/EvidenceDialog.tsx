@@ -5,11 +5,12 @@ import { useState } from 'react';
 import { post } from '../api';
 import { useApp } from '../state';
 import type { CaseDetail, Dict } from '../types';
+import { Backdrop } from './bits';
 
-export function EvidenceDialog({ d, onClose, onDone }: { d: CaseDetail; onClose: () => void; onDone: (d: CaseDetail) => void }) {
+export function EvidenceDialog({ d, controlId: initial, onClose, onDone }: { d: CaseDetail; controlId?: string; onClose: () => void; onDone: (d: CaseDetail) => void }) {
   const { boot, toast } = useApp();
   const claimed: string[] = d.case.form?.controls || [];
-  const [controlId, setControlId] = useState(claimed[0] || '');
+  const [controlId, setControlId] = useState(initial || claimed[0] || '');
   const [kind, setKind] = useState<'link' | 'file'>('link');
   const [url, setUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -29,7 +30,7 @@ export function EvidenceDialog({ d, onClose, onDone }: { d: CaseDetail; onClose:
   };
 
   return (
-    <div className="modalbg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <Backdrop onClose={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-label="Add evidence">
         <div className="phead"><h2>Add evidence</h2><button className="pclose" onClick={onClose} aria-label="Close">&times;</button></div>
         <div className="pbody">
@@ -46,7 +47,7 @@ export function EvidenceDialog({ d, onClose, onDone }: { d: CaseDetail; onClose:
         <div className="pfoot"><button className="btn primary" disabled={!controlId} onClick={send}>Add evidence</button><button className="btn ghost" onClick={onClose}>Cancel</button>
           {error && <span className="err" role="alert">{error}</span>}</div>
       </div>
-    </div>
+    </Backdrop>
   );
 }
 

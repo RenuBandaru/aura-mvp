@@ -20,6 +20,8 @@ export interface Bootstrap {
   ongoingBasis: Record<string, string>;
   ctlStatus: Record<string, string>;
   questionOptions: Record<string, { id: string; label: string }[]>;
+  clockOffsetMs?: number;
+  serverNow?: number;
 }
 
 /** One input in an action dialog, as the engine's actions_for describes it. */
@@ -44,6 +46,9 @@ export interface Action {
   fields: Field[];
   intro?: string;
   inline?: boolean;
+  hidden?: boolean;
+  /** A finalizing action whose tabs can also be saved for the other reviewers without deciding (review_draft). */
+  canDraft?: boolean;
   form?: boolean;
   tabs?: [string, string][];
   defaultTab?: string;
@@ -60,6 +65,7 @@ export interface CaseRow {
   dueAt?: number; late: boolean; stageSince?: number;
   gaps: { gates: number; newStops: number; other: number };
   stopFlags: string[]; acceptanceExpired: boolean; notPermitted: boolean;
+  awaitingSignoff?: boolean; budget?: boolean; createdAt?: number;
 }
 
 export interface QueueItem extends CaseRow { why: string; actions: string[]; readyToFinalize: boolean; deadlock: boolean }
@@ -79,6 +85,17 @@ export interface CaseDetail {
   roi: Dict;
   budgetFlag: Dict | null;
   auditCheck: { ok: boolean; entries: number; [k: string]: any };
+  /** Data readiness: checks met, of, needed, ok. */
+  ready: { count: number; of: number; need: number; ok: boolean };
+  /** Risk and readiness answers in words, with Missing marks once the case is scored. */
+  answerRows: { questions: { id: string; label: string; value: string | null; off: boolean; miss: 'gate' | 'any' | null }[];
+    readiness: { id: string; text: string; value: boolean | 'unknown' | null; miss: boolean }[] };
+  gapLists: { gates: string[]; other: string[]; newStops: string[] };
+  kpis: { rows: Dict[]; history: { at: number; by: string; text: string }[]; approved: boolean; proposed: Dict[]; proposedDiffers: boolean };
+  rulesVersion: number;
+  now: number;
+  rounds: Dict[];
+  decLabels: Record<string, string>;
 }
 
 export interface Mail { ts: number; n?: number; to: string[]; subject: string; body: string; kind?: string; ref: { id: string; title: string } }

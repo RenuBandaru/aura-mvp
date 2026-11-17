@@ -27,6 +27,8 @@ from aura_engine.jsx import clone
 from . import rules_admin, views
 from .store import Store, clock_ms
 
+DAY_MS = 86400000
+
 MAX_UPLOAD = 2_000_000  # bytes accepted by the API; the engine applies the real evidence limit
 
 
@@ -58,6 +60,8 @@ def bootstrap(store: Store) -> dict:
             "tierLabels": constants.TIER_LABEL, "roleLabels": constants.ROLE_LABEL, "stages": constants.STAGES,
             "formFields": FORM_FIELDS, "toolStatus": TOOL_STATUS, "scopeOpts": constants.SCOPE_OPTS, "autonomyOpts": constants.AUTONOMY_OPTS,
             "ongoingBasis": ONGOING_BASIS, "ctlStatus": CTL_STATUS,
+            # the demo clock, so the browser counts days the same way the server does
+            "clockOffsetMs": int(store.data["meta"].get("clockOffsetMs") or 0), "serverNow": store.now(),
             # the answer choices for every question, including "Not known" where allowed (engine optionsOf)
             "questionOptions": {q["id"]: options_of(q) for q in rules["questions"]}}
 
@@ -85,7 +89,7 @@ def preview_form(store: Store, pid: str, case_id: str, form: dict) -> dict:
     """Live checks for a form being edited. Nothing is saved."""
     person(pid)
     c = _case(store, case_id)
-    return views.form_preview(views.clean_form(form or {}, c.get("form") or {}), store.rules)
+    return views.form_preview(views.clean_form(form or {}, c.get("form") or {}), store.rules, c.get("evidenceItems") or [])
 
 
 def outbox(store: Store, pid: str, who: str | None = None) -> list[dict]:
@@ -150,11 +154,15 @@ def create_case(store: Store, pid: str, title: str, idea: str, unit_id: str | No
     return views.case_detail(nc, actor, store.ctx())
 
 
-def new_suggestion(store: Store, actor: dict, title: str, idea: str, unit_id: str | None = None, case_id: str | None = None) -> dict:
-    """Create and save a suggestion from ``actor``, and tell their adviser. Shared with the CSV import, which may keep its own ID."""
+def new_suggestion(store: Store, actor: dict, title: str, idea: str, unit_id: str | None = None, case_id: str | None = None,
+                   form: dict | None = None) -> dict:
+    """Create and save a suggestion from ``actor``, and tell their adviser. Shared with the CSV import, which may
+    keep its own ID and fill in some of the use case form (``form``) for the submitter to finish."""
     with store.lock:
         ctx = store.ctx()
         nc = E.assign_adviser(E.new_case(case_id or store.next_case_id(), title, idea, actor["id"], ctx["now"], ctx["rv"]), store.rules, unit_id or None)
+        if form:
+            nc["form"] = {**nc["form"], **form}
         if nc.get("adviserId") and nc["adviserId"] != actor["id"]:
             nc["outbox"].append({"ts": ctx["now"], "n": len(nc["outbox"]), "to": [nc["adviserId"]], "subject": "New idea in your business unit: " + title,
                                  "body": actor["name"] + " logged a new idea: " + idea, "kind": "notice", "auto": True})
@@ -189,8 +197,34 @@ def reminder_sweep(store: Store, pid: str) -> dict:
 def reset(store: Store, pid: str) -> dict:
     if person(pid)["role"] != "admin":
         raise EngineError("Only the demo admin can reset the data.")
-    store.reset()
+    with store.lock:
+        prev = store.data.get("meta", {}).get("adminLog") or []
+        store.reset()
+        store.log_admin(pid, "Reset to sample data", prev)
+        store.save()
     return {"ok": True}
+
+
+def set_clock(store: Store, pid: str, days) -> dict:
+    """Move the demo clock forward by whole days, or back to now when days is 0. JavaScript ``clock``."""
+    _admin(pid, "Only the demo admin can change the demo clock.")
+    try:
+        d = int(days)
+    except (TypeError, ValueError):
+        raise EngineError("Give a whole number of days.")
+    with store.lock:
+        meta = store.data["meta"]
+        meta["clockOffsetMs"] = 0 if d == 0 else int(meta.get("clockOffsetMs") or 0) + d * DAY_MS
+        store.save()
+    return {"clockOffsetMs": store.data["meta"]["clockOffsetMs"]}
+
+
+def admin_info(store: Store, pid: str) -> dict:
+    """What the Data and demo page shows: the clock offset, recent admin events, how data is stored and the sample size."""
+    _admin(pid, "Only the demo admin can see the demo controls.")
+    meta = store.data["meta"]
+    return {"clockOffsetMs": int(meta.get("clockOffsetMs") or 0), "adminLog": list(reversed(meta.get("adminLog") or []))[:8],
+            "storage": "file" if store.path else "memory", "sampleCases": len(E.build_seed(clock_ms())["cases"])}
 
 
 # ---- audit log ----
@@ -207,7 +241,7 @@ def audit_log(store: Store, pid: str, who: str | None = None, q: str | None = No
 def verify_audit_trail(store: Store, pid: str) -> dict:
     """Check the hash chain on every case. JavaScript ``verifyaudit`` (the button handler)."""
     person(pid)
-    return {"at": clock_ms(), "results": [{"id": c["id"], **E.verify_audit(c)} for c in store.cases]}
+    return {"at": store.now(), "results": [{"id": c["id"], **E.verify_audit(c)} for c in store.cases]}
 
 
 def audit_export(store: Store, pid: str) -> dict:
@@ -232,7 +266,7 @@ def tamper(store: Store, pid: str) -> dict:
 
 def training(store: Store, pid: str) -> dict:
     """The Training page for the person acting."""
-    return views.training_page(store.rules, store.data["meta"].get("training") or {}, person(pid), clock_ms())
+    return views.training_page(store.rules, store.data["meta"].get("training") or {}, person(pid), store.now())
 
 
 def complete_training(store: Store, pid: str, training_id: str) -> dict:
@@ -246,7 +280,7 @@ def complete_training(store: Store, pid: str, training_id: str) -> dict:
     with store.lock:
         meta = store.data["meta"]
         records = clone(meta.get("training") or {})
-        records[p["id"]] = {**(records.get(p["id"]) or {}), t["id"]: {"at": clock_ms(), "ver": t.get("version")}}
+        records[p["id"]] = {**(records.get(p["id"]) or {}), t["id"]: {"at": store.now(), "ver": t.get("version")}}
         meta["training"] = records
         store.save()
     return training(store, pid)
@@ -257,7 +291,7 @@ def training_reminders(store: Store, pid: str) -> dict:
     if person(pid)["role"] not in ("lead", "admin"):
         raise EngineError("Only the governance lead can send training reminders.")
     with store.lock:
-        meta, now = store.data["meta"], clock_ms()
+        meta, now = store.data["meta"], store.now()
         mails = list(meta.get("trainingMail") or [])
         n = 0
         for x in views.training_people():
@@ -281,21 +315,21 @@ def dashboard(store: Store, pid: str, ex_days: str | None = None) -> dict:
     days = int(ex_days) if ex_days and ex_days.isdigit() else 180
     if days not in [d for d, _ in views.EXC_PERIODS]:
         raise EngineError("Choose a period from the list.")
-    return views.dashboard(store.data, person(pid), clock_ms(), days)
+    return views.dashboard(store.data, person(pid), store.now(), days)
 
 
 def cases_export(store: Store, pid: str) -> dict:
     """Every use case as CSV text. The browser turns it into a file download."""
     person(pid)
-    return {"filename": "use-cases.csv", "csv": views.cases_csv(store.cases, clock_ms())}
+    return {"filename": "use-cases.csv", "csv": views.cases_csv(store.cases, store.now())}
 
 
 # ---- rules editor (demo admin) ----
 
-def _admin(pid: str) -> dict:
+def _admin(pid: str, msg: str = "Only the demo admin can change the rules.") -> dict:
     p = person(pid)
     if p["role"] != "admin":
-        raise EngineError("Only the demo admin can change the rules.")
+        raise EngineError(msg)
     return p
 
 
@@ -369,7 +403,7 @@ def save_rules(store: Store, pid: str, draft: dict, reason: str, accept_warnings
             return {"saved": False, **v}
         rules = norm_rules(draft)
         n = store.rules_version() + 1
-        store.data.setdefault("versions", []).append({"n": n, "at": clock_ms(), "by": actor["id"], "reason": reason,
+        store.data.setdefault("versions", []).append({"n": n, "at": store.now(), "by": actor["id"], "reason": reason,
                                                       "summary": v["changes"] or ["No setting changed."], "json": E.js_json(rules)})
         store.data["rules"] = rules
         store.save()

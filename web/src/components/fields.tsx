@@ -112,11 +112,7 @@ export function FieldView({ f, v, set, need }: { f: Field; v: Values; set: (k: s
         {f.net != null && <p className="small">Inherent risk is {f.inherent}. Counting only confirmed or evidenced controls, the remaining risk is <b>{f.net}</b>.</p>}
         {(f.rows || []).length ? <ul style={{ margin: '4px 0', paddingLeft: 18 }}>{f.rows.map((r: Dict) => <li key={r.id}><span className={'chip ' + (STATUS_CLS[r.status] || 'ok')}>{boot.ctlStatus[r.status]}</span> {r.text} <span className="muted small">(credit {r.credit}){r.na ? ', does not apply' : ''}</span></li>)}</ul>
           : <p className="muted small">No controls claimed.</p>}</div>;
-      case 'panelnotes': return <div className="field"><span className="lab">{f.label}</span>
-        {f.rec && <div className="pnote"><b>Panel recommendation</b> <span className="muted small">{f.rec.by}, {fdate(f.rec.at)}</span><div><i>{f.rec.text}</i></div></div>}
-        <p className="small muted">Every reviewer's decision and note. They also appear on the case under Reviews, so they are not private.</p>
-        {(f.notes || []).map((n: Dict, i: number) => <div key={i} className="pnote"><b>{n.by}</b>{n.me ? ' (you)' : ''} <span className="muted small">{n.role}{n.at ? ', ' + fdate(n.at) : ''}</span>{' '}
-          {n.dec ? <span className="chip">{n.dec}{n.firm ? ', firm' : ', leaning'}</span> : <span className="muted small">No decision yet</span>}{n.text && <div>{n.text}</div>}</div>)}</div>;
+      case 'panelnotes': return <ReviewerNotes f={f} />;
       default: return <div className={cls}><label htmlFor={id}>{f.label}</label><input id={id} type="text" value={v[f.name] ?? ''} onChange={e => set(f.name, e.target.value)} /></div>;
     }
   })();
@@ -125,3 +121,27 @@ export function FieldView({ f, v, set, need }: { f: Field; v: Values; set: (k: s
 }
 
 const RISK_KIND: Record<string, string> = { declined: 'Control declined', unsupported: 'Control unsupported', missing: 'Not claimed', concern: 'Concern', condition: 'Condition' };
+
+const DEC_WORDS: Record<string, string> = { approve: 'Approve for pilot', waive: 'Approve and waive pilot', remediate: 'Remediate', reject: 'Reject',
+  escalate: 'Send to executives', abstain: 'Abstain', await: 'Awaiting input' };
+const DEC_CLS: Record<string, string> = { approve: 'ok', waive: 'ok', escalate: 'ok', reject: 'bad', remediate: 'warn', await: 'warn', abstain: '' };
+const FIRMABLE = ['approve', 'waive', 'remediate', 'reject', 'escalate'];
+
+/** The reviewers' decisions and notes. With othersOnly (the "Record my decision" pop-up) the person acting is left out,
+ *  and it says so when no one else has voted or commented yet. labels are the decision words from the decision field. */
+export function ReviewerNotes({ f, othersOnly, labels }: { f: Field; othersOnly?: boolean; labels?: Record<string, string> }) {
+  const rows: Dict[] = (f.notes || []).filter((n: Dict) => !othersOnly || !n.me);
+  const said = rows.filter(n => n.dec || n.text);
+  const word = (d: string) => (labels || {})[d] || DEC_WORDS[d] || d;
+  return (
+    <div className="field"><span className="lab">{othersOnly ? 'Other reviewers' : f.label}</span>
+      {f.rec && <div className="pnote"><b>Panel recommendation</b> <span className="muted small">{f.rec.by}, {fdate(f.rec.at)}</span><div><i>{f.rec.text}</i></div></div>}
+      {othersOnly && !said.length ? <p className="muted">No one else has voted yet.</p> : <>
+        <p className="small muted">{othersOnly ? 'What the others have decided and written so far. ' : "Every reviewer's decision and note. "}Other reviewers, the governance lead, executives and the auditor can see these on the case. The submitter, owner and adviser see only the panel's summary and conditions.</p>
+        {rows.map((n: Dict, i: number) => <div key={i} className="pnote"><b>{n.by}</b>{n.me ? ' (you)' : ''} <span className="muted small">{n.role}{n.at ? ', ' + fdate(n.at) : ''}</span>{' '}
+          {n.dec ? <span className={'chip ' + (DEC_CLS[n.dec] || '')}>{word(n.dec)}{FIRMABLE.includes(n.dec) ? (n.firm ? ', firm' : ', leaning') : ''}</span>
+            : <span className="muted small">No decision yet</span>}{n.text && <div className="small" style={{ whiteSpace: 'pre-wrap' }}>{n.text}</div>}</div>)}
+      </>}
+    </div>
+  );
+}

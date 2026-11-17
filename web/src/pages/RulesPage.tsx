@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { get, post } from '../api';
 import { useApp } from '../state';
 import type { Dict } from '../types';
-import { PageHead, useLoad } from '../components/bits';
+import { PageHead, useLoad, Backdrop } from '../components/bits';
 import { EditTarget, RuleItemEditor, Source } from '../components/RuleEditors';
 import { fdatetime } from '../format';
 
@@ -92,6 +92,8 @@ export function RulesPage() {
   };
 
   const props = { draft, info, L, put, patchAt, removeAt, move, open };
+  // How many items each list tab holds, shown on the tab as in build 27.
+  const counts: Record<string, number> = { rules: draft.rules.length, questions: draft.questions.length, controls: draft.controls.length, readiness: draft.readiness.length };
   return (
     <>
       <PageHead title="Rules" sub={`Version ${data.version} is live. Changes stay in this draft until you save them.`}>
@@ -103,12 +105,12 @@ export function RulesPage() {
       {dirty
         ? <div className="callout warn"><b>Unsaved changes ({info.changes.length})</b>
           <ul className="small">{info.changes.slice(0, 6).map((c, i) => <li key={i}>{c}</li>)}{info.changes.length > 6 && <li>and {info.changes.length - 6} more</li>}</ul></div>
-        : <p className="small muted">These settings are demo placeholders, not company policy.</p>}
+        : null}
 
       <div className="tabs" role="tablist" style={{ marginTop: 12 }}>
         {TABS.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
-            {label}{info.dirtyTabs.includes(k) && <span className="dirtydot" title="Unsaved changes"> ●</span>}
+            {label}{counts[k] != null && <span className="n">{counts[k]}</span>}{info.dirtyTabs.includes(k) && <span className="dirtydot" title="Unsaved changes"> ●</span>}
           </button>
         ))}
       </div>
@@ -155,10 +157,18 @@ function RowButtons({ k, i, item, block, p, onEdit, noMove }: { k: string; i: nu
   );
 }
 
+/** Why an item cannot be deleted, under its buttons ("Applied to 1 case. Disable it instead."). */
+const BlockNote = ({ block }: { block?: string }) => block ? <div className="muted small" style={{ marginTop: 3 }}>{block}</div> : null;
+
+/** Enabled or Disabled. JavaScript statusChip. */
+const Status = ({ on }: { on: unknown }) => on === false ? <span className="chip">Disabled</span> : <span className="chip ok">Enabled</span>;
+
 function RulesTab(p: TabProps) {
   const { draft, info, L } = p;
   return (
     <div className="stack">
+      <div className="callout warn"><b>All values here are illustrative.</b><span>They exist so the workflow can run. Replace them with the real rules once they are decided. New rules apply to new submissions and to cases you re-score. Re-scoring does not send anything back; unanswered items are ignored and flagged on the case.</span></div>
+      <p className="muted small">A rule says "when these answers are given, do this". Guardrails send a case back at triage and no one in the process can waive them. Conditions let the case through but must be confirmed later. Minimum tier rules set a floor for the tier. Points add to the score.</p>
       {L.kindOrder.map((kind: string) => {
         const rows = draft.rules.map((r: Dict, i: number) => ({ r, i })).filter((x: Dict) => x.r.kind === kind);
         return (
@@ -168,21 +178,22 @@ function RulesTab(p: TabProps) {
               <button className="btn" onClick={() => p.open({ kind: 'rule', isNew: true, item: { kind, label: '', when: [{ src: '', in: [] }], enabled: true } })}>Add</button>
             </div>
             <div className="tablewrap"><table>
-              <thead><tr><th>Rule</th><th>When</th><th>Effect</th><th>Applied</th><th></th></tr></thead>
+              <thead><tr><th>Rule</th><th>When</th><th>Effect</th><th>Status</th><th>Applied</th><th></th></tr></thead>
               <tbody>
                 {rows.map(({ r, i }: Dict) => {
                   const ri = info.rules[r.id] || {};
                   return (
                     <tr key={r.id} className={r.enabled === false ? 'off' : undefined}>
-                      <td><b>{r.label}</b>{r.ref && <div className="mono muted">{r.ref}</div>}{r.enabled === false && <span className="chip">Disabled</span>}</td>
+                      <td><b>{r.label}</b>{r.ref && <div className="mono muted">{r.ref}</div>}</td>
                       <td className="small">{ri.when}{ri.neverApplies && <div><span className="chip warn">Never applies: no conditions</span></div>}</td>
                       <td className="small">{ri.effect}</td>
-                      <td className="small">{ri.applied ? `${ri.applied} case${ri.applied === 1 ? '' : 's'}` : '-'}</td>
-                      <td><RowButtons k="rules" i={i} item={r} block={ri.deleteBlock} p={p} onEdit={() => p.open({ kind: 'rule', isNew: false, item: r })} /></td>
+                      <td><Status on={r.enabled} /></td>
+                      <td className="small">{ri.applied || 0} case{ri.applied === 1 ? '' : 's'}</td>
+                      <td><RowButtons k="rules" i={i} item={r} block={ri.deleteBlock} p={p} onEdit={() => p.open({ kind: 'rule', isNew: false, item: r })} /><BlockNote block={ri.deleteBlock} /></td>
                     </tr>
                   );
                 })}
-                {!rows.length && <tr><td colSpan={5} className="muted">None yet.</td></tr>}
+                {!rows.length && <tr><td colSpan={6} className="muted">None yet.</td></tr>}
               </tbody>
             </table></div>
           </section>
@@ -198,20 +209,21 @@ function QuestionsTab(p: TabProps) {
   return (
     <section className="card">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>Fact questions on the use case form</h2>
+        <h2>Risk questions</h2>
         <button className="btn" onClick={() => p.open({ kind: 'question', isNew: true, item: { text: '', short: '', type: 'yesno', allowUnknown: true, enabled: true } })}>Add a question</button>
       </div>
+      <p className="muted small" style={{ margin: '6px 0 8px' }}>Questions only ask for facts. What an answer means (points, a guardrail, a minimum tier) is set in the rules, so one question can feed several rules. A question that has been answered on a case cannot be deleted, only disabled. Disabled questions are not asked and rules that depend on them cannot apply.</p>
       <div className="tablewrap"><table>
-        <thead><tr><th>Question</th><th>Answers</th><th>Used by</th><th></th></tr></thead>
+        <thead><tr><th>Question</th><th>Answers</th><th>Status</th><th>Used by</th><th></th></tr></thead>
         <tbody>
           {draft.questions.map((q: Dict, i: number) => {
             const qi = info.questions[q.id] || { rules: [], answered: 0 };
             return (
               <tr key={q.id} className={q.enabled === false ? 'off' : undefined}>
-                <td><b>{q.text}</b><div className="muted small">{q.short}{q.showWhen?.length ? ' · asked only in some cases' : ''}</div>{q.enabled === false && <span className="chip">Disabled</span>}</td>
-                <td className="small">{types[q.type]}{q.allowUnknown ? ', or not known' : ''}</td>
+                <td><b>{q.text}</b><div className="muted small">{q.short}{q.showWhen?.length ? ' · asked only in some cases' : ''}</div></td>
+                <td className="small">{types[q.type]}{q.allowUnknown ? ', or not known' : ''}</td><td><Status on={q.enabled} /></td>
                 <td className="small">{qi.rules.length} rule{qi.rules.length === 1 ? '' : 's'}, answered on {qi.answered} case{qi.answered === 1 ? '' : 's'}</td>
-                <td><RowButtons k="questions" i={i} item={q} block={qi.deleteBlock} p={p} onEdit={() => p.open({ kind: 'question', isNew: false, item: q })} /></td>
+                <td><RowButtons k="questions" i={i} item={q} block={qi.deleteBlock} p={p} onEdit={() => p.open({ kind: 'question', isNew: false, item: q })} /><BlockNote block={qi.deleteBlock} /></td>
               </tr>
             );
           })}
@@ -230,19 +242,19 @@ function ControlsTab(p: TabProps) {
         <button className="btn" onClick={() => p.open({ kind: 'control', isNew: true, item: { text: '', short: '', credit: 1, attest: 'optional', enabled: true } })}>Add a control</button>
       </div>
       <div className="tablewrap"><table>
-        <thead><tr><th>Control</th><th>Points off</th><th>Confirmation</th><th>Applies</th><th>Used</th><th></th></tr></thead>
+        <thead><tr><th>Control</th><th>Points off</th><th>Confirmation</th><th>Applies</th><th>Status</th><th>Used</th><th></th></tr></thead>
         <tbody>
           {draft.controls.map((c: Dict, i: number) => {
             const ci = info.controls[c.id] || {};
             return (
               <tr key={c.id} className={c.enabled === false ? 'off' : undefined}>
-                <td><b>{c.short || c.text}</b><div className="muted small">{c.text}</div>{c.enabled === false && <span className="chip">Disabled</span>}</td>
+                <td><b>{c.short || c.text}</b><div className="muted small">{c.text}</div></td>
                 <td><input type="number" min={0} className="num" aria-label={'Points off for ' + (c.short || c.text)} value={c.credit}
                   onChange={e => p.patchAt('controls', i, { credit: num(e.target.value) })} /></td>
                 <td className="small">{c.attest === 'required' ? 'Required' : 'Optional'}</td>
-                <td className="small">{ci.applies || 'Every use case'}</td>
-                <td className="small">{ci.used ? `${ci.used} case${ci.used === 1 ? '' : 's'}` : '-'}</td>
-                <td><RowButtons k="controls" i={i} item={c} block={ci.deleteBlock} p={p} onEdit={() => p.open({ kind: 'control', isNew: false, item: c })} /></td>
+                <td className="small">{ci.applies || 'Every use case'}</td><td><Status on={c.enabled} /></td>
+                <td className="small">{ci.used || 0} case{ci.used === 1 ? '' : 's'}</td>
+                <td><RowButtons k="controls" i={i} item={c} block={ci.deleteBlock} p={p} onEdit={() => p.open({ kind: 'control', isNew: false, item: c })} /><BlockNote block={ci.deleteBlock} /></td>
               </tr>
             );
           })}
@@ -446,13 +458,13 @@ function ReadinessTab(p: TabProps) {
       </div>
       <div style={{ maxWidth: 360 }}><NumField id="minReady" label="Checks that must be met to pass triage" value={draft.minReady} onChange={v => p.put('minReady', v)} /></div>
       <div className="tablewrap"><table>
-        <thead><tr><th>Check</th><th>Answered</th><th></th></tr></thead>
+        <thead><tr><th>Check</th><th>Status</th><th>Answered</th><th></th></tr></thead>
         <tbody>
           {draft.readiness.map((r: Dict, i: number) => (
             <tr key={r.id} className={r.enabled === false ? 'off' : undefined}>
-              <td>{r.text}{r.enabled === false && <> <span className="chip">Disabled</span></>}</td>
-              <td className="small">{info.readiness[r.id]?.used ? `${info.readiness[r.id].used} cases` : '-'}</td>
-              <td><RowButtons k="readiness" i={i} item={r} block={info.readiness[r.id]?.deleteBlock} p={p} onEdit={() => p.open({ kind: 'readiness', isNew: false, item: r })} /></td>
+              <td>{r.text}</td><td><Status on={r.enabled} /></td>
+              <td className="small">{info.readiness[r.id]?.used || 0} case{info.readiness[r.id]?.used === 1 ? '' : 's'}</td>
+              <td><RowButtons k="readiness" i={i} item={r} block={info.readiness[r.id]?.deleteBlock} p={p} onEdit={() => p.open({ kind: 'readiness', isNew: false, item: r })} /><BlockNote block={info.readiness[r.id]?.deleteBlock} /></td>
             </tr>
           ))}
         </tbody>
@@ -588,7 +600,7 @@ function SaveDialog({ check, draft, onSaved, onClose }: { check: Check; draft: D
   };
   const blocked = c.errors.length > 0;
   return (
-    <div className="modalbg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <Backdrop onClose={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-label="Save rules">
         <div className="phead"><h2>Save as version {c.nextVersion}</h2><button className="pclose" onClick={onClose} aria-label="Close">&times;</button></div>
         <div className="pbody stack" style={{ gap: 10 }}>
@@ -606,6 +618,6 @@ function SaveDialog({ check, draft, onSaved, onClose }: { check: Check; draft: D
           {err && <span className="err" role="alert">{err}</span>}
         </div>
       </div>
-    </div>
+    </Backdrop>
   );
 }

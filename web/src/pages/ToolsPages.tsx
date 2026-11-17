@@ -5,32 +5,45 @@ import { useEffect, useState } from 'react';
 import { get, post } from '../api';
 import { go, useApp } from '../state';
 import type { Action, Dict } from '../types';
-import { fdate } from '../format';
+import { fdate, fdateShort } from '../format';
 import { PageHead, useLoad } from '../components/bits';
 import { ActionDialog } from '../components/ActionDialog';
 
 const STATUS_CLS: Record<string, string> = { approved: 'ok', review: 'warn', not_approved: 'bad', draft: '' };
 const StatusChip = ({ t }: { t: Dict }) => <span className={'chip ' + (STATUS_CLS[t.status] || '')}>{t.statusLabel}</span>;
 
+const TOOL_SOURCE: Record<string, string> = { reported: 'Reported by a person', use_case: 'Created from a use case' };
+
 export function ToolsPage() {
-  const { me, version, name, toast } = useApp();
+  const { me, version, name, toast, boot } = useApp();
   const { data, error } = useLoad(() => get<Dict[]>('/tools'), [me.id, version]);
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState('all');
   const report = async () => {
     try { const t = await post<Dict>('/tools'); go('tools', t.id); } catch (e: any) { toast(e.message, true); }
   };
   if (error) return <div className="callout bad">{error}</div>;
+  const list = [...(data || [])].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+    .filter(t => (status === 'all' || t.status === status)
+      && (!q || [t.name, t.vendor, t.purpose, name(t.ownerId)].join(' ').toLowerCase().includes(q.toLowerCase())));
   return (
     <>
-      <PageHead title="AI tools" sub="AI tools in use. Reporting a tool carries no consequence; reviews apply going forward.">
+      <PageHead title="AI tools" sub="The AI tools people are using or have reported. Look here before starting something new, so work is not duplicated. Reporting a tool carries no consequence: reviews apply going forward.">
         {!['admin', 'auditor'].includes(me.role) && <button className="btn accent" onClick={report}>Report an AI tool</button>}
       </PageHead>
-      {!data ? <p className="muted">Loading...</p> : <div className="tablewrap"><table>
-        <thead><tr><th>ID</th><th>AI tool</th><th>Status</th><th>Owner</th><th>Source</th></tr></thead>
-        <tbody>{data.map(t => <tr key={t.id} className="click" onClick={() => go('tools', t.id)}>
-          <td className="mono">{t.id}</td><td><div className="title">{t.name || <span className="muted">Untitled draft</span>}</div><div className="small muted">{t.purpose}</div></td>
-          <td><StatusChip t={t} /></td><td className="small">{name(t.ownerId)}</td>
-          <td className="small">{t.source === 'use_case' ? <a href={'#/case/' + t.useCaseId} onClick={e => e.stopPropagation()}>{t.useCaseId}</a> : 'Reported'}</td></tr>)}</tbody>
-      </table></div>}
+      <div className="filters">
+        <input type="search" placeholder="Search by name, vendor, purpose or owner" value={q} onChange={e => setQ(e.target.value)} aria-label="Search AI tools" />
+        <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Status">
+          <option value="all">All statuses</option>{Object.entries(boot.toolStatus).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+      </div>
+      {!data ? <p className="muted">Loading...</p> : list.length ? <div className="tablewrap"><table>
+        <thead><tr><th>ID</th><th>AI tool</th><th>Status</th><th>Owner</th><th>Source</th><th>Use case</th><th>Reported</th></tr></thead>
+        <tbody>{list.map(t => <tr key={t.id} className="click" onClick={() => go('tools', t.id)}>
+          <td className="mono">{t.id}</td><td><div className="title">{t.name || <span className="muted">Untitled draft</span>}</div><div className="small muted">{t.vendor || t.purpose}</div></td>
+          <td><StatusChip t={t} /></td><td>{name(t.ownerId)}</td><td className="small">{TOOL_SOURCE[t.source] || t.source}</td>
+          <td className="mono small">{t.useCaseId && <a href={'#/case/' + t.useCaseId} onClick={e => e.stopPropagation()}>{t.useCaseId}</a>}</td>
+          <td className="small muted">{t.reportedAt ? fdateShort(t.reportedAt) : 'Not reported'}</td></tr>)}</tbody>
+      </table></div> : <div className="empty">No AI tools match.</div>}
     </>
   );
 }

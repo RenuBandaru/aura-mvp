@@ -178,6 +178,13 @@ the code in `actions.py` that decided it.
 | `../dev_server.py` | Runs the API (and the built screens) on your laptop with only the Python standard library. |
 | `../function_app.py` | The same routes as an Azure Functions app. |
 
+The demo clock: `Store.now()` is the real clock plus the offset the demo admin sets on the Data and demo
+page (`meta.clockOffsetMs`). Every server-side date uses it, and bootstrap sends the offset so the browser
+counts days the same way. Resets, imports and restores are noted in `meta.adminLog`.
+
+Live form checks: `views.form_preview` also returns `sectionGaps` (the counts on the form's section tabs)
+and `softGaps` (the "Before you submit" check), so the screens only show them.
+
 Who is acting: the React app sends the person picked in **Viewing as** in an `X-Aura-Person` header. With
 Microsoft sign-in, that header is replaced by the signed-in user.
 

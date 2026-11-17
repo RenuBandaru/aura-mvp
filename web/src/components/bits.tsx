@@ -1,14 +1,65 @@
-// Small display pieces shared by many pages.
+// Small display pieces shared by many pages: tier gauges, due chips, warning chips, the case table,
+// the page heading, a full-screen dialog backdrop and a data loader.
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../state';
 import type { CaseRow } from '../types';
-import { fdate, ago } from '../format';
+import { ago, DAY, nowMs } from '../format';
+
+const TIER_ORDER = ['low', 'moderate', 'high', 'critical'];
+const segs = (tier?: string) => TIER_ORDER.map((t, k) => <i key={t} style={{ background: k <= TIER_ORDER.indexOf(tier || '') ? `var(--t-${t})` : 'var(--line)' }} />);
 
 export const TierChip = ({ tier, label }: { tier?: string; label?: string }) =>
   tier ? <span className={'tier ' + tier}>{label || tier}</span> : <span className="muted small">Not scored</span>;
 
-/** The warning chips build 27 shows on lists: missing answers, guardrails, stop limits. JavaScript gapChip and flagChips. */
+/** The case-page and queue gauge: "Risk tier", four segments filled up to the tier, and its name. JavaScript tierMeter. */
+export function TierGauge({ tier }: { tier?: string }) {
+  const { boot } = useApp();
+  return (
+    <div className="tiermeter" title="Risk tier comes from the inherent risk score"><span className="muted small">Risk tier</span>
+      <div className="segs" aria-hidden="true">{segs(tier)}</div>
+      <b style={{ color: tier ? `var(--t-${tier})` : 'var(--muted)' }}>{tier ? boot.tierLabels[tier] : 'Not scored yet'}</b></div>
+  );
+}
+
+/** The smaller gauge used in tables. JavaScript tierInline. */
+export function TierInline({ tier }: { tier?: string }) {
+  const { boot } = useApp();
+  if (!tier) return <span className="muted small">Not scored yet</span>;
+  return <span className="tierinline"><span className="segs" aria-hidden="true">{segs(tier)}</span><b style={{ color: `var(--t-${tier})` }}>{boot.tierLabels[tier]}</b></span>;
+}
+
+const DUE_LABEL: Record<string, string> = { vetting: 'Vetting due', panel: 'Panel due', exec: 'Decision due', pilot: 'Pilot review', production: 'Next review' };
+
+/** What is due and when: "Panel due: overdue 13d", "Pilot review in 2d". JavaScript dueChip. */
+export function DueChip({ row }: { row: Pick<CaseRow, 'dueAt' | 'stage'> }) {
+  if (!row.dueAt || row.stage === 'closed') return null;
+  const lab = DUE_LABEL[row.stage] || 'Due', diff = row.dueAt - nowMs();
+  if (diff < 0) return <span className="chip bad">{lab}: overdue {Math.max(1, Math.floor(-diff / DAY))}d</span>;
+  const d = Math.ceil(diff / DAY);
+  return <span className={'chip' + (d <= 1 ? ' warn' : '')}>{lab} in {d}d</span>;
+}
+
+/** The chip only when the case is overdue or due within a day (case page header, list rows). JavaScript dueAlert. */
+export function DueAlert({ row }: { row: Pick<CaseRow, 'dueAt' | 'stage'> }) {
+  if (!row.dueAt || row.stage === 'closed') return null;
+  const diff = row.dueAt - nowMs();
+  return diff < 0 || Math.ceil(diff / DAY) <= 1 ? <DueChip row={row} /> : null;
+}
+
+/** The Due column in tables. JavaScript dueCell. */
+export function DueCell({ row }: { row: CaseRow }) {
+  if (!row.dueAt || row.stage === 'closed') return <span className="muted">-</span>;
+  const diff = row.dueAt - nowMs();
+  if (diff < 0 || Math.ceil(diff / DAY) <= 1) return <DueChip row={row} />;
+  return <span className="muted small">{DUE_LABEL[row.stage] || 'Due'} in {Math.ceil(diff / DAY)}d</span>;
+}
+
+/** Kept for pages that only need a plain due text. */
+export const DueText = DueCell;
+
+/** The warning chips build 27 shows on lists: missing answers, guardrails, stop limits, sign-off, budget. JavaScript gapChip and flagChips. */
 export function GapChips({ row }: { row: CaseRow }) {
   const g = row.gaps;
   return (
@@ -16,17 +67,16 @@ export function GapChips({ row }: { row: CaseRow }) {
       {g.gates > 0 && <span className="chip bad" title="A guardrail has no answer on this case, so it was never applied">Missing guardrail{g.gates > 1 ? ` (${g.gates})` : ''}</span>}
       {g.newStops > 0 && <span className="chip bad" title="A guardrail now applies to this case">Guardrail applies</span>}
       {g.other > 0 && <span className="chip warn" title="Some answers are missing, so the tier may be understated">Missing{g.other > 1 ? ` (${g.other})` : ''}</span>}
-      {row.stopFlags.length > 0 && <span className="chip bad">Stop limit passed</span>}
-      {row.acceptanceExpired && <span className="chip warn">Approval expired</span>}
-      {row.notPermitted && <span className="chip bad">Not permitted</span>}
+      {row.awaitingSignoff && <span className="chip warn" title="The owner has to accept before it is submitted">Awaiting owner sign-off</span>}
+      {row.stopFlags.length > 0 && <span className="chip bad" title="A KPI has passed its stop limit">Stop limit passed</span>}
+      {row.acceptanceExpired && <span className="chip warn" title="The approval period has ended">Acceptance expired</span>}
+      {row.notPermitted && <span className="chip bad" title="Rejected and marked not permitted">Not permitted</span>}
+      {row.budget && <span className="chip warn" title="Ongoing cost per user is above the limit">Budget scrutiny</span>}
     </>
   );
 }
 
-export const DueText = ({ row }: { row: CaseRow }) =>
-  row.dueAt && row.stage !== 'closed' ? <span className={row.late ? 'chip bad' : 'small'}>{row.late ? 'Late, due ' : 'Due '}{fdate(row.dueAt)}</span> : <span className="muted small">-</span>;
-
-/** A table of cases. Clicking a row opens the case. */
+/** A table of cases. Clicking a row opens the case. JavaScript caseRow. */
 export function CaseTable({ rows, onOpen }: { rows: CaseRow[]; onOpen: (id: string) => void }) {
   const { name } = useApp();
   return (
@@ -39,8 +89,8 @@ export function CaseTable({ rows, onOpen }: { rows: CaseRow[]; onOpen: (id: stri
               <td className="mono">{r.id}</td>
               <td><div className="title">{r.title}</div><div className="muted small">{name(r.submitterId)}</div></td>
               <td><b>{r.stageLabel}</b> {r.returned && <span className="chip warn">Returned</span>}<div className="row"><GapChips row={r} /></div></td>
-              <td><TierChip tier={r.tier} label={r.tierLabel} /></td>
-              <td><DueText row={r} /></td>
+              <td><TierInline tier={r.tier} /></td>
+              <td><DueCell row={r} /></td>
               <td className="muted small">{ago(r.stageSince)}</td>
             </tr>
           ))}
@@ -53,6 +103,17 @@ export function CaseTable({ rows, onOpen }: { rows: CaseRow[]; onOpen: (id: stri
 export const PageHead = ({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) => (
   <div className="pagehead"><div><h1>{title}</h1>{sub && <p className="muted">{sub}</p>}</div><div className="row">{children}</div></div>
 );
+
+/** The dark backdrop behind a dialog. Drawn on document.body so it always covers the whole window, however long the page. */
+export function Backdrop({ onClose, children }: { onClose?: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    if (!onClose) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [onClose]);
+  return createPortal(<div className="modalbg" onMouseDown={e => onClose && e.target === e.currentTarget && onClose()}>{children}</div>, document.body);
+}
 
 /** Loads data with the given loader whenever any of the dependencies change. */
 export function useLoad<T>(loader: () => Promise<T>, deps: unknown[]): { data: T | null; error: string; reload: () => void } {
