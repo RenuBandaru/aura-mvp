@@ -15,6 +15,7 @@ import { AuditPage } from './pages/AuditPage';
 import { TrainingPage } from './pages/TrainingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RulesPage } from './pages/RulesPage';
+import { PeoplePage } from './pages/PeoplePage';
 
 const START_AS = 'p_dana';
 const remembered = () => { try { return localStorage.getItem('aura.as') || START_AS; } catch { return START_AS; } };
@@ -38,7 +39,6 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  setActingAs(asId); // every request from here on is made as this person
 
   useEffect(() => {
     if (!boot) return;
@@ -58,6 +58,10 @@ export function App() {
     return { boot, me, version, changed: () => setVersion(v => v + 1), reloadBoot, toast, person, name: id => person(id)?.name || id || '' };
   }, [boot, asId, version, toast, reloadBoot]);
 
+  // Every request from here on is made as this person. If they were removed (an import or a reset),
+  // the first person in the list is used instead.
+  setActingAs(state ? state.me.id : asId);
+
   if (failed) return <div className="main"><div className="callout bad"><b>{failed}</b></div></div>;
   if (!state) return <div className="main muted">Loading AURA...</div>;
 
@@ -76,7 +80,7 @@ export function App() {
   return (
     <AppContext.Provider value={state}>
       <header className="top">
-        <div className="brand"><span className="bar" /><b>AURA</b><span className="small">AI use case governance (sample data)</span></div>
+        <div className="brand"><span className="bar" /><b>AURA</b><span className="small">AI use case governance</span></div>
         <label className="viewas small">Viewing as
           <select value={state.me.id} onChange={e => switchTo(e.target.value)}>
             {state.boot.people.map(p => <option key={p.id} value={p.id}>{p.name}, {p.roleLabel}</option>)}
@@ -93,7 +97,7 @@ export function App() {
           {state.me.role !== 'admin' && navItem('training', 'Training', trainingDue)}
           {navItem('outbox', 'Outbox')}
           {navItem('audit', 'Audit log')}
-          {(state.me.role === 'admin' || state.me.role === 'lead') && <><div className="sep">Demo</div>{state.me.role === 'admin' && navItem('rules', 'Rules')}{navItem('data', 'Data and demo')}</>}
+          {(state.me.role === 'admin' || state.me.role === 'lead') && <><div className="sep">Demo</div>{state.me.role === 'admin' && navItem('rules', 'Rules')}{state.me.role === 'admin' && navItem('people', 'People')}{navItem('data', 'Data and demo')}</>}
         </nav>
         <main className="main">{page(route)}</main>
       </div>
@@ -113,6 +117,7 @@ function page(r: Route) {
     case 'training': return <TrainingPage />;
     case 'dash': return <DashboardPage />;
     case 'rules': return <RulesPage />;
+    case 'people': return <PeoplePage />;
     case 'data': return <DataPage />;
     default: return <QueuePage />;
   }

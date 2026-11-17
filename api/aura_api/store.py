@@ -2,7 +2,10 @@
 
 The whole data set is one dictionary, the same shape build 27 kept in the browser::
 
-    {"cases": [...], "tools": [...], "files": [...], "rules": {...}, "versions": [...], "meta": {...}}
+    {"cases": [...], "tools": [...], "files": [...], "rules": {...}, "versions": [...], "meta": {...}, "people": [...]}
+
+``people`` is the list behind "Viewing as". It starts as the invented sample people; the demo admin can
+edit it or import a CSV on the deployed site, so real names live only in the deployed data file.
 
 :class:`Store` holds it in memory, guarded by a lock so two requests cannot change it at once, and can
 save it to a JSON file so data survives a restart. The Azure version will keep the same methods and
@@ -35,6 +38,8 @@ class Store:
         self.data: dict = {}
         if self.path and self.path.exists():
             self.data = json.loads(self.path.read_text(encoding="utf-8"))
+            self.data.setdefault("people", E.sample_people())  # files saved before people were editable
+            self.activate()
         else:
             self.reset()
 
@@ -43,7 +48,21 @@ class Store:
     def reset(self) -> None:
         """Start again from the sample data, built at the current time so due dates look natural."""
         with self.lock:
+            people = E.sample_people()
+            E.use_people(people)  # the seed is built from the sample people
             self.data = E.build_seed(clock_ms())
+            self.data["people"] = people
+            self.save()
+
+    def activate(self) -> None:
+        """Point the engine at this store's people. Called before every request."""
+        E.use_people(self.people)
+
+    def replace_all(self, data: dict) -> None:
+        """Swap in a whole data set (a restored backup) and save it."""
+        with self.lock:
+            self.data = data
+            self.activate()
             self.save()
 
     def save(self) -> None:
@@ -65,6 +84,15 @@ class Store:
 
     def rules_version(self) -> int:
         return max([v["n"] for v in self.data.get("versions") or []] or [1])
+
+    # ---- people ----
+
+    @property
+    def people(self) -> list[dict]:
+        return self.data["people"]
+
+    def person(self, pid: str) -> dict | None:
+        return next((p for p in self.people if p["id"] == pid), None)
 
     # ---- use cases ----
 

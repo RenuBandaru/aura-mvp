@@ -30,6 +30,12 @@ people: Dana Whitfield (submitter), Elena Duarte (governance lead), Sam Okafor (
 (executive) and so on. Changes are kept in `api/.data/aura.json`; switch Viewing as to Demo admin and use
 **Data and demo** to reset to the sample data. Press Ctrl+C in the terminal to stop.
 
+To load your own people and use cases, act as Demo admin and open **Data and demo**: download the CSV
+templates, then use Remove sample use cases and tools, Import people, fix any gaps the Rules page reports
+(business unit advisers, consult area experts), and Import use cases. People can also be added one at a
+time on the **People** page. Download a backup before any of these. Real data belongs only in the deployed
+app's storage, never in this repository.
+
 While changing the screens, use the live-reloading dev server instead:
 
 ```bash

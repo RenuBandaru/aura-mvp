@@ -146,15 +146,21 @@ def create_case(store: Store, pid: str, title: str, idea: str, unit_id: str | No
         raise EngineError("Add a title and a short description.")
     if actor["role"] in ("admin", "auditor"):
         raise EngineError("This role cannot log suggestions.")
+    nc = new_suggestion(store, actor, title, idea, unit_id)
+    return views.case_detail(nc, actor, store.ctx())
+
+
+def new_suggestion(store: Store, actor: dict, title: str, idea: str, unit_id: str | None = None, case_id: str | None = None) -> dict:
+    """Create and save a suggestion from ``actor``, and tell their adviser. Shared with the CSV import, which may keep its own ID."""
     with store.lock:
         ctx = store.ctx()
-        nc = E.assign_adviser(E.new_case(store.next_case_id(), title, idea, pid, ctx["now"], ctx["rv"]), store.rules, unit_id or None)
-        if nc.get("adviserId") and nc["adviserId"] != pid:
+        nc = E.assign_adviser(E.new_case(case_id or store.next_case_id(), title, idea, actor["id"], ctx["now"], ctx["rv"]), store.rules, unit_id or None)
+        if nc.get("adviserId") and nc["adviserId"] != actor["id"]:
             nc["outbox"].append({"ts": ctx["now"], "n": len(nc["outbox"]), "to": [nc["adviserId"]], "subject": "New idea in your business unit: " + title,
                                  "body": actor["name"] + " logged a new idea: " + idea, "kind": "notice", "auto": True})
         store.put_case(nc)
         store.save()
-    return views.case_detail(nc, actor, store.ctx())
+    return nc
 
 
 def similar(store: Store, pid: str, text: str, exclude: str | None = None) -> list[dict]:

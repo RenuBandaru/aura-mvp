@@ -17,7 +17,7 @@ Everything else is exported so the API and the tests can reach it without knowin
 
 from .actions import actions_for
 from .audit import audit_hash, seal_audit, verify_audit
-from .constants import PEOPLE, SYSTEM, STAGES, TIERS, by_id, lead_id, with_role
+from .constants import PEOPLE, ROLES, SYSTEM, STAGES, TIERS, by_id, lead_id, sample_people, use_people, with_role
 from .consults import consult_needs, second_look_options
 from .controls import (acceptance_expired, control_status, loose_threads, measure_board, measure_flags,
                        measure_state, parse_measures, support_view)

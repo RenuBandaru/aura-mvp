@@ -20,7 +20,7 @@ Everything the engine works on is a dictionary:
 | Thing | Shape (the main keys) |
 | --- | --- |
 | Use case ("case") | `id`, `title`, `stage`, `tier`, `form` (all the answers), `submitterId`, `adviserId`, `consults`, `votes`, `attestations`, `audit`, `outbox` |
-| Person | `id`, `name`, `role`, `unit` (the 24 sample people are in `constants.PEOPLE`) |
+| Person | `id`, `name`, `email`, `role`, `unit`, `title` (the active list is `constants.PEOPLE`; the store loads it from saved data, starting from the 24 samples) |
 | Rules | questions, scoring and guardrail rules, controls, tiers, quorums, review days (`rules.default_rules()`) |
 | Context (`ctx`) | `rules`, `now` (milliseconds since 1970), `rv` (rules version), `training` (who finished training) |
 
@@ -79,7 +79,7 @@ Start at the top; each module only uses the ones above it.
 | --- | --- |
 | `jsx.py` | Small helpers that copy JavaScript behavior exactly (see section 5). Read this first. |
 | `errors.py` | `EngineError`, the one error type for messages shown to people. |
-| `constants.py` | Stages, tiers, the 24 sample people, role names, answer options. `by_id` looks people up. |
+| `constants.py` | Stages, tiers, the 24 sample people, role names, answer options. `by_id` looks people up; `use_people` swaps in the saved list (not in build 27). |
 | `rules.py` | The default rules, migrating older saved rules (`norm_rules`), tier from score. |
 | `matching.py` | Does a rule's condition match a form's answers? Which controls a form needs. Readiness gaps. |
 | `people.py` | Owner and adviser, training records, conflict of duty (`duty_block`), the AI tool catalog matcher. |
@@ -169,9 +169,10 @@ the code in `actions.py` that decided it.
 
 | File | What it does |
 | --- | --- |
-| `store.py` | Holds the data (cases, tools, files, rules). Memory plus an optional JSON file locally; a database in Azure later. |
+| `store.py` | Holds the data (cases, tools, files, rules, people). Memory plus an optional JSON file locally; a database in Azure later. `activate()` hands the saved people to the engine before each request. |
 | `views.py` | Turns engine results into what a screen needs: the queue, list rows, the case page, live form checks. Ports of small helpers from build 27's `ui.js`. |
 | `rules_admin.py` | The rules editor's questions about a draft: what each item is used by, whether it may be deleted, checks on one edited item, and What-if. Ports of build 27's `ui.js` rules section. |
+| `people_admin.py` | The demo admin's People page and Data page: add, edit and delete people, CSV templates, people and use case imports (every row checked first; any bad row means nothing changes), backup and restore, and the rule gaps left after people change. |
 | `service.py` | One function per thing the app can do: read the queue, perform an action, log a suggestion, upload evidence. Each change asks the engine for the new case, then saves it. |
 | `routes.py` | Maps URLs (such as `POST /api/cases/UC-1012/actions/rv_vote`) to those functions. Lists every endpoint at the top. |
 | `../dev_server.py` | Runs the API (and the built screens) on your laptop with only the Python standard library. |

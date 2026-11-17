@@ -39,6 +39,17 @@ except ``GET /api/bootstrap``)::
     POST /api/admin/sweep                        reminder sweep (lead or admin)
     POST /api/admin/reset                        reset to the sample data (admin)
     POST /api/admin/tamper                       demo: alter one audit entry so Verify catches it (admin)
+    GET  /api/people                             the People page (admin)
+    POST /api/people                             add or change a person {person}
+    POST /api/people/{id}/delete                 delete a person no case or rule names
+    GET  /api/admin/people/template              people CSV template, invented rows
+    GET  /api/admin/people/export                the people list as CSV
+    POST /api/admin/people/import                add or update people from CSV {csv, mode: merge|replace}
+    GET  /api/admin/cases/template               use case CSV template, invented rows
+    POST /api/admin/cases/import                 log a suggestion per CSV row {csv, defaultSubmitter?}
+    POST /api/admin/clear                        remove every use case, AI tool and file (admin)
+    GET  /api/admin/backup                       the whole data set as JSON text
+    POST /api/admin/restore                      replace everything with a backup {data}
 
 Errors come back as ``{"error": message}``: 400 when the engine refuses (the message is for people),
 404 when something does not exist.
@@ -55,6 +66,7 @@ import traceback
 
 from aura_engine.errors import EngineError
 
+from . import people_admin as P
 from . import service as S
 from .service import NotFound
 
@@ -95,6 +107,17 @@ ROUTES = [
     ("POST", r"/api/admin/sweep", lambda st, pid, m, q, b: S.reminder_sweep(st, pid)),
     ("POST", r"/api/admin/reset", lambda st, pid, m, q, b: S.reset(st, pid)),
     ("POST", r"/api/admin/tamper", lambda st, pid, m, q, b: S.tamper(st, pid)),
+    ("GET", r"/api/people", lambda st, pid, m, q, b: P.people_page(st, pid)),
+    ("POST", r"/api/people", lambda st, pid, m, q, b: P.save_person(st, pid, b.get("person"))),
+    ("POST", r"/api/people/(?P<id>[\w-]+)/delete", lambda st, pid, m, q, b: P.delete_person(st, pid, m["id"])),
+    ("GET", r"/api/admin/people/template", lambda st, pid, m, q, b: P.people_template(st, pid)),
+    ("GET", r"/api/admin/people/export", lambda st, pid, m, q, b: P.people_export(st, pid)),
+    ("POST", r"/api/admin/people/import", lambda st, pid, m, q, b: P.import_people(st, pid, b.get("csv"), b.get("mode") or "merge")),
+    ("GET", r"/api/admin/cases/template", lambda st, pid, m, q, b: P.cases_template(st, pid)),
+    ("POST", r"/api/admin/cases/import", lambda st, pid, m, q, b: P.import_cases(st, pid, b.get("csv"), b.get("defaultSubmitter"))),
+    ("POST", r"/api/admin/clear", lambda st, pid, m, q, b: P.clear_samples(st, pid)),
+    ("GET", r"/api/admin/backup", lambda st, pid, m, q, b: P.backup(st, pid)),
+    ("POST", r"/api/admin/restore", lambda st, pid, m, q, b: P.restore(st, pid, b.get("data"))),
 ]
 _COMPILED = [(method, re.compile(pattern + r"/?\Z"), fn) for method, pattern, fn in ROUTES]
 
@@ -110,6 +133,7 @@ def dispatch(store, method: str, path: str, query: dict, body: dict | None, head
         match = pattern.match(path)
         if match and m == method:
             try:
+                store.activate()  # the engine reads this store's people
                 return 200, fn(store, actor_id(headers), match.groupdict(), query or {}, body or {})
             except EngineError as e:
                 return 400, {"error": e.message}
