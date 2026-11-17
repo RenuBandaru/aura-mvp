@@ -50,6 +50,8 @@ except ``GET /api/bootstrap``)::
     POST /api/admin/clear                        remove every use case, AI tool and file (admin)
     GET  /api/admin/backup                       the whole data set as JSON text
     POST /api/admin/restore                      replace everything with a backup {data}
+    GET  /api/admin/info                         demo clock offset, recent admin events, storage (admin)
+    POST /api/admin/clock                        move the demo clock {days}; 0 resets it (admin)
 
 Errors come back as ``{"error": message}``: 400 when the engine refuses (the message is for people),
 404 when something does not exist.
@@ -118,6 +120,8 @@ ROUTES = [
     ("POST", r"/api/admin/clear", lambda st, pid, m, q, b: P.clear_samples(st, pid)),
     ("GET", r"/api/admin/backup", lambda st, pid, m, q, b: P.backup(st, pid)),
     ("POST", r"/api/admin/restore", lambda st, pid, m, q, b: P.restore(st, pid, b.get("data"))),
+    ("GET", r"/api/admin/info", lambda st, pid, m, q, b: S.admin_info(st, pid)),
+    ("POST", r"/api/admin/clock", lambda st, pid, m, q, b: S.set_clock(st, pid, b.get("days"))),
 ]
 _COMPILED = [(method, re.compile(pattern + r"/?\Z"), fn) for method, pattern, fn in ROUTES]
 

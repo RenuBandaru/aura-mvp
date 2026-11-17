@@ -65,6 +65,15 @@ class Store:
             self.activate()
             self.save()
 
+    def now(self) -> int:
+        """The demo's current time: the real (or fixed) clock plus the demo clock offset set on the Data and demo page."""
+        return clock_ms() + int((self.data.get("meta") or {}).get("clockOffsetMs") or 0)
+
+    def log_admin(self, pid: str, what: str, prev: list | None = None) -> None:
+        """Note a reset, import or restore in meta.adminLog (the last 30), shown on the Data and demo page."""
+        log = list(self.data["meta"].get("adminLog") or []) if prev is None else list(prev)
+        self.data["meta"]["adminLog"] = (log + [{"at": self.now(), "by": pid, "what": what}])[-30:]
+
     def save(self) -> None:
         if not self.path:
             return
@@ -79,7 +88,7 @@ class Store:
 
     def ctx(self, now: int | None = None) -> dict:
         """The context the engine needs for every call."""
-        return {"rules": self.rules, "now": clock_ms() if now is None else now, "rv": self.rules_version(),
+        return {"rules": self.rules, "now": self.now() if now is None else now, "rv": self.rules_version(),
                 "training": self.data["meta"].get("training")}
 
     def rules_version(self) -> int:

@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { post } from '../api';
 import type { Dict } from '../types';
+import { Backdrop } from './bits';
 
 /** What can be edited, and where it goes. `area` and `index` are only for consult triggers. */
 export interface EditTarget { kind: 'question' | 'rule' | 'control' | 'readiness' | 'trigger'; item: Dict; isNew: boolean; area?: number; index?: number }
@@ -42,7 +43,7 @@ export function RuleItemEditor({ target, draft, info, labels, onApplied, onClose
     : k === 'readiness' ? 'data readiness check' : k === 'trigger' ? 'consult trigger' : k);
 
   return (
-    <div className="modalbg" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <Backdrop onClose={onClose}>
       <div className="modal wide" role="dialog" aria-modal="true" aria-label={title}>
         <div className="phead"><h2>{title}</h2><button className="pclose" onClick={onClose} aria-label="Close">&times;</button></div>
         <div className="pbody">
@@ -59,7 +60,7 @@ export function RuleItemEditor({ target, draft, info, labels, onApplied, onClose
           <span className="small muted" style={{ flexBasis: '100%' }}>Applying changes the draft only. Use Save rules at the top to make them live.</span>
         </div>
       </div>
-    </div>
+    </Backdrop>
   );
 }
 

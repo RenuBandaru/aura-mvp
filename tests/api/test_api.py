@@ -284,3 +284,34 @@ def test_loading_an_old_version_and_rescoring(api):
     assert api("POST", "/api/rules/rescore", pid="p_dana")[0] == 400
     status, out = api("POST", "/api/rules/rescore", pid="p_elena")
     assert status == 200 and out["rescored"] > 0
+
+
+def test_demo_clock_and_admin_events(api):
+    assert api("POST", "/api/admin/clock", pid="p_elena", body={"days": 3})[0] == 400
+    assert api("POST", "/api/admin/clock", pid="p_admin", body={"days": "soon"}) == (400, {"error": "Give a whole number of days."})
+    assert api("POST", "/api/admin/clock", pid="p_admin", body={"days": 3})[1]["clockOffsetMs"] == 3 * 86400000
+    assert api("GET", "/api/bootstrap")[1]["clockOffsetMs"] == 3 * 86400000
+    info = api("GET", "/api/admin/info", pid="p_admin")[1]
+    assert info["clockOffsetMs"] == 3 * 86400000 and info["sampleCases"] == 18 and info["storage"] == "memory"
+    assert api("GET", "/api/admin/info", pid="p_elena")[0] == 400
+    saved = api("GET", "/api/admin/backup", pid="p_admin")[1]["json"]
+    api("POST", "/api/admin/clock", pid="p_admin", body={"days": 0})
+    assert api("GET", "/api/admin/info", pid="p_admin")[1]["clockOffsetMs"] == 0
+    assert api("POST", "/api/admin/restore", pid="p_admin", body={"data": saved})[1]["cases"] == 18
+    api("POST", "/api/admin/reset", pid="p_admin")
+    log = api("GET", "/api/admin/info", pid="p_admin")[1]["adminLog"]
+    assert [x["what"] for x in log] == ["Reset to sample data", "Restored a backup (18 use cases)"]
+    assert api("GET", "/api/admin/info", pid="p_admin")[1]["clockOffsetMs"] == 0
+
+
+def test_form_preview_counts_section_gaps_and_the_before_you_submit_check(api):
+    form = {"ucType": "vendor", "scope": "customer", "autonomy": "automate", "controls": ["c_log"], "attesters": {},
+            "evidence": {}, "problem": "", "measures": []}
+    _, out = api("POST", "/api/cases/UC-1008/preview", pid="p_dana", body={"form": form})
+    # Two required controls (human review, escalation) are not claimed; the problem and a KPI are missing.
+    assert out["sectionGaps"] == {"about": 1, "cost": 0, "measures": 1, "risk": 0, "ready": 0, "controls": 2}
+    assert out["softGaps"] == {"noConf": ["Inputs and outputs are logged"],
+                               "unclaimed": ["Role-based access to the tool and its data", "Can be switched off within an hour"]}
+    # Naming a confirmer, or giving evidence, takes a claimed control off the list.
+    _, out = api("POST", "/api/cases/UC-1008/preview", pid="p_dana", body={"form": {**form, "evidence": {"c_log": "Log settings page"}}})
+    assert out["softGaps"]["noConf"] == []

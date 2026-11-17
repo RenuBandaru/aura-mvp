@@ -16,8 +16,6 @@ import aura_engine as E
 from aura_engine import constants, controls, matching, people, review
 from aura_engine.derived import EXC_KINDS
 from aura_engine.rules import GOAL_DEFS, goal_met
-from aura_engine.derived import EXC_KINDS
-from aura_engine.rules import GOAL_DEFS, goal_met
 from aura_engine.jsx import short_date
 from aura_engine.tools import TOOL_STATUS
 
@@ -67,6 +65,10 @@ def case_row(c: dict, ctx: dict) -> dict:
         "dueAt": c.get("dueAt"), "late": bool(c.get("dueAt")) and c["stage"] != "closed" and c["dueAt"] < now, "stageSince": c.get("stageSince"),
         "gaps": gap_summary(c, ctx["rules"]), "stopFlags": flags, "acceptanceExpired": bool(E.acceptance_expired(c, now)),
         "notPermitted": bool((c.get("closed") or {}).get("notPermitted")),
+        # build 27 flagChips: the owner has not signed off yet, and a per-user running cost above the limit
+        "awaitingSignoff": bool((c.get("signoff") or {}).get("status") == "requested" and c["stage"] == "use_case"),
+        "budget": bool(c.get("scoring") and c["stage"] not in ("use_case", "closed") and E.budget_flag(c.get("form") or {}, ctx["rules"])),
+        "createdAt": c.get("createdAt"),
     }
 
 
@@ -134,13 +136,87 @@ def review_view(c: dict, rules: dict, now: int) -> dict | None:
     if c["stage"] not in ("panel", "exec"):
         return None
     votes = E.rev_votes(c)
-    return {
-        "votes": [{"personId": pid, "dec": v.get("dec"), "label": review.dec_label(v.get("dec"), c.get("tier"), c["stage"]), "firm": bool(v.get("firm")), "at": v.get("at")}
+    out = {
+        "votes": [{"personId": pid, "dec": v.get("dec"), "label": review.dec_label(v.get("dec"), c.get("tier"), c["stage"]), "firm": bool(v.get("firm")), "at": v.get("at"),
+                   "awaitIds": v.get("awaitIds") or []}
                   for pid, v in votes.items()],
         "pool": E.rev_pool(c),
         "need": E.rev_need(c, rules), "blockers": E.rev_blockers(c, rules), "ready": E.rev_ready(c, rules),
-        "deadlock": E.rev_deadlock(c, rules, now),
+        "deadlock": E.rev_deadlock(c, rules, now), "quorum": E.rev_quorum_waivable(c, rules),
     }
+    out["status"] = review_status(c, out)
+    return out
+
+
+def review_status(c: dict, rv: dict) -> dict:
+    """Where the decision stands, in one line: a chip and a sentence. JavaScript ``reviewStatusHtml``."""
+    X = c["stage"] == "exec"
+    who, any_one = ("executives", "executive") if X else ("reviewers", "reviewer")
+    lab = lambda d: review.dec_label(d, c.get("tier"), c["stage"])  # noqa: E731
+    rdy, dl, wq, N = rv["ready"], rv["deadlock"], rv["quorum"], rv["need"]
+    if rdy and rdy.get("ok"):
+        tail = " The last reviewer left the finalizing to the lead." if (c.get("readyBy") or {}).get("declined") else " Any " + any_one + " can finalize."
+        return {"chip": "Ready to finalize", "cls": "ok", "text": f"{rdy['firm']} of {N} needed {who} hold {lab(rdy['dec'])} firm and nobody disagrees.{tail}"}
+    if rdy:
+        return {"chip": "Agreed, terms incomplete", "cls": "warn", "text": f"Everyone agrees on {lab(rdy['dec'])}, but these are missing: {'; '.join(rdy.get('gaps') or [])}."}
+    if dl and dl.get("lean"):
+        return {"chip": "Deadlock", "cls": "bad", "text": f"Everyone leans or holds {lab(dl['decs'][0])}, but too few are firm and the deadline has passed. Leanings count as firm now. "
+                + ("Any executive" if X else "The lead") + " can push it."}
+    if dl:
+        return {"chip": "Deadlock", "cls": "bad", "text": f"The {who} disagree. " + ("Any executive" if X else "The lead") + " can break it."}
+    if wq:
+        return {"chip": "Quorum short", "cls": "warn", "text": f"Only {wq['n']} of {wq['of']} reviewers are left and they agree. The lead can waive the quorum."}
+    firm: dict = {}
+    for v in rv["votes"]:
+        if v["firm"] and v["personId"] in rv["pool"]:
+            firm[v["dec"]] = firm.get(v["dec"], 0) + 1
+    held = ", ".join(f"{n} firm for {lab(d).lower()}" for d, n in firm.items()) or "No firm decisions yet."
+    return {"chip": "Open", "cls": "", "text": f"Needs {N} {who} holding the same firm decision with nobody disagreeing. {held}"}
+
+
+def answer_rows(c: dict, rules: dict) -> dict:
+    """Risk answers and data readiness answers in words, with the Missing marks. JavaScript ``riskRows`` and ``readyRows``."""
+    form = c.get("form") or {}
+    scored = bool(c.get("scoring")) and c["stage"] in ("vetting", "panel", "exec", "pilot", "production")
+    gates = matching.gate_question_ids(rules)
+    qs = []
+    for q in rules["questions"]:
+        if not matching.q_applies(q, form, rules) or (q.get("enabled") is False and not matching.answer_tokens(form, q)):
+            continue
+        off = q.get("enabled") is False
+        qs.append({"id": q["id"], "label": q.get("short") or q["text"], "value": matching.answer_label(q, form), "off": off,
+                   "miss": ("gate" if q["id"] in gates else "any") if scored and not off and not matching.answer_tokens(form, q) else None})
+    rd = []
+    for r in rules["readiness"]:
+        v = (form.get("readiness") or {}).get(r["id"])
+        if r.get("enabled") is False and v is None:
+            continue
+        rd.append({"id": r["id"], "text": r["text"], "value": v, "miss": bool(scored and r.get("enabled") is not False and v is None)})
+    return {"questions": qs, "readiness": rd}
+
+
+def kpi_view(c: dict) -> dict:
+    """The approved KPIs (or the proposed ones), whether the approver edited each, and the results recorded. JavaScript ``measuresCard``."""
+    form, a = c.get("form") or {}, c.get("acceptance")
+    prop = form.get("measures") or []
+    same = lambda p, m: (p.get("name") == m.get("name") and p.get("dir") == m.get("dir") and p.get("target") == m.get("target")  # noqa: E731
+                         and p.get("stop") == m.get("stop") and p.get("scaleUp") == m.get("scaleUp"))
+    board = E.measure_board(c) if a else [{"m": m, "value": None, "state": None} for m in prop]
+    rows = [{**r["m"], "value": r["value"], "state": r["state"], "stateLabel": controls.MEAS_STATE.get(r["state"]) if r["state"] else None,
+             "edited": bool(a) and not any(same(p, r["m"]) for p in prop)} for r in board]
+    hist = []
+    for x in reversed(c.get("measurements") or []):
+        bits = []
+        for mid, v in (x.get("values") or {}).items():
+            m = next((k for k in (a or {}).get("measures") or [] if k.get("id") == mid), None)
+            st = controls.measure_state(m, v) if m else None
+            if m:
+                bits.append(m["name"] + " " + str(v) + (" (" + controls.MEAS_STATE[st].lower() + ")" if st else ""))
+        hist.append({"at": x.get("at"), "by": x.get("by"), "text": "; ".join(bits)})
+    strip = lambda ms: [{k: v for k, v in m.items() if k != "id"} for m in ms or []]  # noqa: E731
+    return {"rows": rows, "history": hist, "approved": bool(a),
+            "proposed": (a or {}).get("proposed") or [] if a else [],
+            "proposedDiffers": bool(a) and strip(a.get("proposed")) != strip(a.get("measures"))}
 
 
 def case_detail(c: dict, viewer: dict, ctx: dict) -> dict:
@@ -163,12 +239,86 @@ def case_detail(c: dict, viewer: dict, ctx: dict) -> dict:
         "roi": E.three_year_roi(form),
         "budgetFlag": E.budget_flag(form, rules),
         "auditCheck": E.verify_audit(c),
+        # build 27 case page pieces worked out here so React only lays them out
+        "ready": E.ready_status(form, rules),
+        "answerRows": answer_rows(c, rules),
+        "gapLists": gap_lists(c, rules),
+        "kpis": kpi_view(c),
+        "rulesVersion": ctx.get("rv"),
+        "now": now,
+        "rounds": round_views(c, viewer, rules),
+        "decLabels": {d: review.dec_label(d, c.get("tier"), c["stage"]) for d in review.DEC_LABEL},
     }
 
 
-def form_preview(form: dict, rules: dict) -> dict:
+def round_views(c: dict, viewer: dict, rules: dict) -> list[dict]:
+    """Earlier review rounds, newest first. Reviewers' votes, notes and the terms are for internal roles only. JavaScript ``reviewHistoryHtml``."""
+    internal = viewer.get("role") in SEES_INTERNAL
+    now = review.terms_now(c, rules) if internal else None
+    out = []
+    for r in reversed(c.get("rounds") or []):
+        row = {"n": r.get("n"), "kind": r.get("kind"), "at": r.get("at"), "by": r.get("by"), "how": r.get("how"), "summary": r.get("summary"),
+               "outcome": review.dec_label(r.get("outcome"), c.get("tier"), r.get("kind"))}
+        if internal:
+            row.update({"votes": [{**v, "label": review.dec_label(v.get("dec"), c.get("tier"), r.get("kind"))} for v in r.get("votes") or []],
+                        "notes": r.get("notes") or [], "terms": r.get("terms"),
+                        "changed": [x["label"] for x in review.terms_diff(r.get("terms"), now)]})
+        out.append(row)
+    return out
+
+
+def gap_lists(c: dict, rules: dict) -> dict:
+    """The names behind the Missing callouts on the Assessment tab. JavaScript ``gapBoxes``."""
+    g = E.case_gaps(c, rules)
+    name = lambda x: x.get("short") or x.get("text")  # noqa: E731
+    gate_ids = {q["id"] for q in g["gates"]}
+    return {"gates": [name(q) for q in g["gates"]],
+            "other": [name(q) for q in g["questions"] if q["id"] not in gate_ids] + [name(r) for r in g["readiness"]],
+            "newStops": [r.get("message") or r.get("label") for r in g["newStops"]]}
+
+
+COST_FIELDS = ("costUSD", "ongoingCostUSD", "budgetSource")
+
+
+def _required_confirmers_missing(form: dict, rules: dict) -> list[dict]:
+    """Claimed controls that need a named confirmer and have none."""
+    att = form.get("attesters") or {}
+    return [k for k in rules["controls"] if k["id"] in (form.get("controls") or []) and k.get("attest") == "required" and not att.get(k["id"])]
+
+
+def section_gaps(form: dict, rules: dict) -> dict:
+    """How much is still to answer in each section of the form, for the badges on its tabs. JavaScript ``tabGaps``."""
+    from aura_engine.forms import FORM_FIELDS, is_blank
+    left = {"about": 0, "cost": 0, "measures": 0, "risk": 0, "ready": 0, "controls": 0}
+    for x in FORM_FIELDS:
+        if is_blank(form.get(x["k"])):
+            left["cost" if x["k"] in COST_FIELDS else "about"] += 1
+    if not any(not is_blank(m.get("name")) for m in form.get("measures") or []):
+        left["measures"] += 1
+    g = E.form_gaps(form, rules)
+    left["risk"], left["ready"] = len(g["questions"]), len(g["readiness"])
+    left["controls"] = len(E.unclaimed_required(form, rules)) + len(_required_confirmers_missing(form, rules))
+    return left
+
+
+def soft_gaps(form: dict, rules: dict, evidence_items: list[dict]) -> dict:
+    """The "Before you submit" check: claimed controls with no confirmer and no evidence, and recommended
+    controls not claimed. Submitting is still allowed. JavaScript ``softGaps``."""
+    att, ev = form.get("attesters") or {}, form.get("evidence") or {}
+    text = {k["id"]: k.get("text") for k in rules["controls"]}
+    claimed = form.get("controls") or []
+    no_conf = [text[cid] for cid in claimed if cid in text and text[cid] and not att.get(cid) and not str(ev.get(cid) or "").strip()
+               and not any(e.get("controlId") == cid and not e.get("removed") for e in evidence_items or [])]
+    needs = E.control_needs(form, rules)
+    unclaimed = [text[cid] for cid, n in needs.items() if n.get("level") == "recommended" and cid not in claimed and text.get(cid)]
+    return {"noConf": no_conf, "unclaimed": unclaimed}
+
+
+def form_preview(form: dict, rules: dict, evidence_items: list[dict] | None = None) -> dict:
     """Live feedback while someone edits a use case form: which questions and controls apply, what is missing."""
     return {
+        "sectionGaps": section_gaps(form, rules),
+        "softGaps": soft_gaps(form, rules, evidence_items or []),
         "questionsShown": [q["id"] for q in rules["questions"] if q.get("enabled") is not False and matching.q_applies(q, form, rules)],
         "controlNeeds": E.control_needs(form, rules),
         "consultNeeds": E.consult_needs(form, rules),
@@ -238,10 +388,9 @@ def submit_gaps(form: dict, rules: dict) -> dict:
     if not form.get("measures"):
         fields.append("At least one KPI with a target and a stop limit")
     fields += ["Claim the required control: " + n["text"] for n in E.unclaimed_required(form, rules)]
-    for cid in form.get("controls") or []:
-        k = next((x for x in rules["controls"] if x["id"] == cid), None)
-        if k and k.get("attest") == "required" and not (form.get("attesters") or {}).get(cid):
-            fields.append("Someone to confirm: " + k["text"])
+    claimed = form.get("controls") or []
+    for k in sorted(_required_confirmers_missing(form, rules), key=lambda k: claimed.index(k["id"])):
+        fields.append("Someone to confirm: " + k["text"])
     return {"questions": [{"id": q["id"], "text": q["text"]} for q in g["questions"]],
             "readiness": [{"id": r["id"], "text": r["text"]} for r in g["readiness"]], "fields": fields,
             "count": len(g["questions"]) + len(g["readiness"]) + len(fields)}

@@ -36,14 +36,14 @@ export function NewSuggestionPage() {
 
   return (
     <>
-      <PageHead title="New suggestion" sub="A short idea is enough. An adoption adviser helps shape it into a use case." />
-      <div className="card" style={{ maxWidth: 760 }}>
-        <div className="field"><label htmlFor="n_title">Title</label><input id="n_title" type="text" value={title} onChange={e => setTitle(e.target.value)} /></div>
-        <div className="field"><label htmlFor="n_idea">The idea, in a few sentences</label><textarea id="n_idea" value={idea} onChange={e => setIdea(e.target.value)} /></div>
-        <div className="field"><label htmlFor="n_unit">Business unit (decides your adoption adviser)</label>
+      <PageHead title="New suggestion" sub="Anyone can log an AI idea. It does not need to be a full use case yet." />
+      <div className="card" style={{ maxWidth: 640 }}>
+        <div className="field"><label htmlFor="n_title">Title</label><input id="n_title" type="text" placeholder="A short name for the idea" value={title} onChange={e => setTitle(e.target.value)} /></div>
+        <div className="field"><label htmlFor="n_idea">What is the idea?</label><textarea id="n_idea" placeholder="Describe the problem and how AI might help." value={idea} onChange={e => setIdea(e.target.value)} /></div>
+        <div className="field"><label htmlFor="n_unit">Business unit</label>
           <select id="n_unit" value={unitId} onChange={e => setUnitId(e.target.value)}>
             {(boot.rules.units || []).map((u: Dict) => <option key={u.id} value={u.id}>{u.label}</option>)}
-          </select></div>
+          </select><span className="small muted">Your adoption adviser for this unit is alerted to new ideas. Change it if the idea belongs to another unit.</span></div>
         {similar.length > 0 && (
           <div className="callout" style={{ marginBottom: 12 }}>
             <b>Something similar may already exist</b>
@@ -56,7 +56,9 @@ export function NewSuggestionPage() {
             ))}
           </div>
         )}
-        <button className="btn primary" disabled={busy || !title.trim() || !idea.trim()} onClick={submit}>Log suggestion</button>
+        <div className="row"><button className="btn primary" disabled={busy || !title.trim() || !idea.trim()} onClick={submit}>Log suggestion</button>
+          <button className="btn ghost" onClick={() => go('queue')}>Cancel</button></div>
+        <p className="small muted" style={{ marginTop: 8 }}>Submitting as {me.name}. Use sample data only.</p>
       </div>
     </>
   );

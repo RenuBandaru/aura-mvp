@@ -3,7 +3,7 @@
 import { get } from '../api';
 import { go, useApp } from '../state';
 import type { CaseRow, QueueItem } from '../types';
-import { CaseTable, DueText, GapChips, PageHead, TierChip, useLoad } from '../components/bits';
+import { CaseTable, DueChip, GapChips, PageHead, TierGauge, useLoad } from '../components/bits';
 
 export function QueuePage() {
   const { me, version } = useApp();
@@ -25,12 +25,13 @@ export function QueuePage() {
             {data.items.map(i => (
               <div key={i.id} className={'qitem' + (i.late ? ' late' : '')} role="button" tabIndex={0}
                 onClick={() => go('case', i.id)} onKeyDown={e => e.key === 'Enter' && go('case', i.id)}>
-                <div className="row" style={{ justifyContent: 'space-between' }}>
+                <div className="qhead">
                   <span><span className="mono muted">{i.id}</span> <span className="title">{i.title}</span></span>
-                  <span className="row"><DueText row={i} />{i.returned && <span className="chip warn">Returned</span>}<GapChips row={i} />
+                  <span className="row"><DueChip row={i} />{i.returned && <span className="chip warn">Returned</span>}<GapChips row={i} />
                     {i.readyToFinalize && <span className="chip ok">Ready to finalize</span>}{i.deadlock && <span className="chip bad">Deadlock</span>}</span>
                 </div>
-                <div className="row small"><b>{i.stageLabel}</b><TierChip tier={i.tier} label={i.tierLabel} /><span className="muted">{i.why}</span></div>
+                <div className="qfields"><div className="stagefield"><span className="muted small">Stage</span><b>{i.stageLabel}</b></div><TierGauge tier={i.tier} /></div>
+                <div className="muted">{i.why}</div>
               </div>
             ))}
           </div>

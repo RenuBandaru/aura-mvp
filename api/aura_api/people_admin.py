@@ -312,6 +312,7 @@ def import_people(store: Store, pid: str, text: str, mode: str = "merge") -> dic
             return {"applied": False, "errors": errors[:MAX_ERRORS], "moreErrors": max(0, len(errors) - MAX_ERRORS)}
         store.data["people"] = people
         store.activate()
+        store.log_admin(pid, "Imported people (" + str(added) + " added, " + str(updated) + " updated, " + str(len(removed)) + " removed)")
         store.save()
     return {"applied": True, "added": added, "updated": updated, "removed": len(removed), "ruleGaps": rule_gaps(store)}
 
@@ -356,6 +357,9 @@ def import_cases(store: Store, pid: str, text: str, default_submitter: str | Non
         return {"applied": False, "errors": errors[:MAX_ERRORS], "moreErrors": max(0, len(errors) - MAX_ERRORS)}
     from .service import new_suggestion  # here, not at the top: service imports this module
     ids = [new_suggestion(store, p, title, idea, unit, cid)["id"] for cid, p, title, idea, unit in plan]
+    with store.lock:
+        store.log_admin(pid, "Imported " + str(len(ids)) + " use case(s)")
+        store.save()
     return {"applied": True, "added": len(ids), "ids": ids}
 
 
@@ -386,7 +390,11 @@ def restore(store: Store, pid: str, data) -> dict:
         norm_rules(data["rules"])
     except Exception:
         raise EngineError("The rules in that backup cannot be read.")
+    prev = store.data["meta"].get("adminLog") or []
     store.replace_all(data)
+    with store.lock:
+        store.log_admin(pid, "Restored a backup (" + str(len(data["cases"])) + " use cases)", prev)
+        store.save()
     return {"ok": True, "cases": len(data["cases"]), "people": len(data["people"])}
 
 
@@ -396,5 +404,6 @@ def clear_samples(store: Store, pid: str) -> dict:
     with store.lock:
         n = len(store.cases)
         store.data["cases"], store.data["tools"], store.data["files"] = [], [], []
+        store.log_admin(pid, "Removed " + str(n) + " use case(s) and every AI tool")
         store.save()
     return {"ok": True, "removed": n}
