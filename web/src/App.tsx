@@ -59,7 +59,7 @@ export function App() {
     if (!boot) return null;
     const me = boot.people.find(p => p.id === asId) || boot.people[0];
     const person = (id?: string | null) => boot.people.find(p => p.id === id);
-    return { boot, me, version, changed: () => setVersion(v => v + 1), reloadBoot, toast, person, name: id => person(id)?.name || id || '' };
+    return { boot, me, version, changed: () => setVersion(v => v + 1), reloadBoot, toast, person, name: id => person(id)?.name || (id === 'system' ? 'System (automated)' : id) || '' };
   }, [boot, asId, version, toast, reloadBoot]);
 
   // Every request from here on is made as this person. If they were removed (an import or a reset),
@@ -142,7 +142,7 @@ function page(r: Route) {
     case 'case': return <CasePage id={r.id || ''} />;
     case 'new': return <NewSuggestionPage />;
     case 'tools': return r.id ? <ToolPage id={r.id} /> : <ToolsPage />;
-    case 'outbox': return <OutboxPage />;
+    case 'outbox': return <OutboxPage key={r.id || ''} caseId={r.id} />;
     case 'audit': return <AuditPage caseId={r.id} />;
     case 'training': return <TrainingPage />;
     case 'dash': return <DashboardPage />;

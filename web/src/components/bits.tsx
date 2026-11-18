@@ -11,7 +11,13 @@ const TIER_ORDER = ['low', 'moderate', 'high', 'critical'];
 const segs = (tier?: string) => TIER_ORDER.map((t, k) => <i key={t} style={{ background: k <= TIER_ORDER.indexOf(tier || '') ? `var(--t-${t})` : 'var(--line)' }} />);
 
 export const TierChip = ({ tier, label }: { tier?: string; label?: string }) =>
-  tier ? <span className={'tier ' + tier}>{label || tier}</span> : <span className="muted small">Not scored</span>;
+  tier ? <span className={'chip ' + tier}>{label || tier}</span> : <span className="chip">Not scored</span>;
+
+/** The filled warning triangle build 27 puts before alerts (its ALERT). */
+export const ALERT = <svg className="ico" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 1.6 15.2 14H0.8z" fill="currentColor" /><path d="M8 6.2v3.8M8 11.7v.5" stroke="var(--surface)" strokeWidth="1.7" strokeLinecap="round" /></svg>;
+
+/** The question-mark circle on the "Ask adviser" button (build 27's HELP_ICO). */
+export const HELP_ICO = <svg className="hlp" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M6 6.2a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="8" cy="11.8" r=".9" fill="currentColor" /></svg>;
 
 /** The case-page and queue gauge: "Risk tier", four segments filled up to the tier, and its name. JavaScript tierMeter. */
 export function TierGauge({ tier }: { tier?: string }) {
@@ -64,17 +70,20 @@ export function GapChips({ row }: { row: CaseRow }) {
   const g = row.gaps;
   return (
     <>
-      {g.gates > 0 && <span className="chip bad" title="A guardrail has no answer on this case, so it was never applied">Missing guardrail{g.gates > 1 ? ` (${g.gates})` : ''}</span>}
-      {g.newStops > 0 && <span className="chip bad" title="A guardrail now applies to this case">Guardrail applies</span>}
-      {g.other > 0 && <span className="chip warn" title="Some answers are missing, so the tier may be understated">Missing{g.other > 1 ? ` (${g.other})` : ''}</span>}
-      {row.awaitingSignoff && <span className="chip warn" title="The owner has to accept before it is submitted">Awaiting owner sign-off</span>}
-      {row.stopFlags.length > 0 && <span className="chip bad" title="A KPI has passed its stop limit">Stop limit passed</span>}
-      {row.acceptanceExpired && <span className="chip warn" title="The approval period has ended">Acceptance expired</span>}
-      {row.notPermitted && <span className="chip bad" title="Rejected and marked not permitted">Not permitted</span>}
-      {row.budget && <span className="chip warn" title="Ongoing cost per user is above the limit">Budget scrutiny</span>}
+      {g.gates > 0 && <> <span className="chip bad" title="A guardrail has no answer on this case, so it was never applied">{ALERT} Missing guardrail{g.gates > 1 ? ` (${g.gates})` : ''}</span></>}
+      {g.newStops > 0 && <> <span className="chip bad" title="A guardrail now applies to this case">{ALERT} Guardrail applies</span></>}
+      {g.other > 0 && <> <span className="chip warn" title="Some answers are missing, so the tier may be understated">{ALERT} Missing{g.other > 1 ? ` (${g.other})` : ''}</span></>}
+      {row.awaitingSignoff && <> <span className="chip warn" title="The owner has to accept before it is submitted">Awaiting owner sign-off</span></>}
+      {row.stopFlags.length > 0 && <> <span className="chip bad" title="A KPI has passed its stop limit">{ALERT} Stop limit passed</span></>}
+      {row.acceptanceExpired && <> <span className="chip warn" title="The approval period has ended">Acceptance expired</span></>}
+      {row.notPermitted && <> <span className="chip bad" title="Rejected and marked not permitted">Not permitted</span></>}
+      {row.budget && <> <span className="chip warn" title="Ongoing cost per user is above the limit">Budget scrutiny</span></>}
     </>
   );
 }
+
+/** Whether GapChips would show anything (build 27 adds the line only then). */
+export const hasChips = (r: CaseRow) => r.gaps.gates > 0 || r.gaps.newStops > 0 || r.gaps.other > 0 || !!r.awaitingSignoff || r.stopFlags.length > 0 || !!r.acceptanceExpired || !!r.notPermitted || !!r.budget;
 
 /** A table of cases. Clicking a row opens the case. JavaScript caseRow. */
 export function CaseTable({ rows, onOpen }: { rows: CaseRow[]; onOpen: (id: string) => void }) {
@@ -86,9 +95,9 @@ export function CaseTable({ rows, onOpen }: { rows: CaseRow[]; onOpen: (id: stri
         <tbody>
           {rows.map(r => (
             <tr key={r.id} className="click" onClick={() => onOpen(r.id)}>
-              <td className="mono">{r.id}</td>
+              <td className="mono ucidc">{r.id}</td>
               <td><div className="title">{r.title}</div><div className="muted small">{name(r.submitterId)}</div></td>
-              <td><b>{r.stageLabel}</b> {r.returned && <span className="chip warn">Returned</span>}<div className="row"><GapChips row={r} /></div></td>
+              <td><b className="stagetxt">{r.stageLabel}</b>{r.returned && r.stage === 'use_case' && <> <span className="chip warn">Returned</span></>}{hasChips(r) && <div><GapChips row={r} /></div>}</td>
               <td><TierInline tier={r.tier} /></td>
               <td><DueCell row={r} /></td>
               <td className="muted small">{ago(r.stageSince)}</td>
@@ -101,7 +110,7 @@ export function CaseTable({ rows, onOpen }: { rows: CaseRow[]; onOpen: (id: stri
 }
 
 export const PageHead = ({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) => (
-  <div className="pagehead"><div><h1>{title}</h1>{sub && <p className="muted">{sub}</p>}</div><div className="row">{children}</div></div>
+  <div className="pagehead"><div><h1>{title}</h1>{sub && <p>{sub}</p>}</div><div className="row">{children}</div></div>
 );
 
 /** The dark backdrop behind a dialog. Drawn on document.body so it always covers the whole window, however long the page. */

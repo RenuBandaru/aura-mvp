@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { downloadCsv, get } from '../api';
 import { go, useApp } from '../state';
 import type { DashboardData, Goal } from '../types';
-import { PageHead, TierChip, useLoad } from '../components/bits';
+import { ALERT, DueChip, PageHead, TierChip, useLoad } from '../components/bits';
 import { ago } from '../format';
 
 const TIER_ORDER: [string, string][] = [['low', 'Low'], ['moderate', 'Moderate'], ['high', 'High'], ['critical', 'Critical'], ['none', 'Not scored']];
@@ -31,8 +31,8 @@ export function DashboardPage() {
   return (
     <>
       <PageHead title="Dashboard" sub="Where cases are, how long they wait and how they end.">
-        <button className="btn" onClick={() => save('/cases/export')}>Export cases CSV</button>
-        <button className="btn" onClick={() => save('/audit/export')}>Export audit CSV</button>
+        <button className="btn primary" onClick={() => save('/cases/export')}>Export cases CSV</button>
+        <button className="btn primary" onClick={() => save('/audit/export')}>Export audit CSV</button>
       </PageHead>
 
       <div className="stack">
@@ -64,9 +64,9 @@ export function DashboardPage() {
           <h2>Production alerts <span className={'chip ' + (data.alerts.length ? 'bad' : 'ok')}>{data.alerts.length}</span></h2>
           {data.alerts.length ? <>
             <div className="tablewrap"><table><tbody>{data.alerts.map(a => (
-              <tr key={a.id} className="click" onClick={() => go('case', a.id)}>
+              <tr key={a.id} className="click alertrow" onClick={() => go('case', a.id)}>
                 <td><div className="title">{a.title}</div><div className="muted small">{a.id}, {a.stageLabel}</div></td>
-                <td>{a.items.map(i => <div key={i} className="small">⚠ {i}</div>)}</td>
+                <td>{a.items.map(i => <div key={i} className="small">{ALERT} {i}</div>)}</td>
                 <td><TierChip tier={a.tier} label={a.tierLabel} /></td>
               </tr>))}
             </tbody></table></div>
@@ -143,7 +143,7 @@ export function DashboardPage() {
               <div className="tablewrap"><table><tbody>{data.mostOverdue.map(c => (
                 <tr key={c.id} className="click" onClick={() => go('case', c.id)}>
                   <td><div className="title">{c.title}</div><div className="muted small">{c.stageLabel}</div></td>
-                  <td><span className="chip bad">{c.daysOverdue}d overdue</span></td>
+                  <td className="num">{c.daysOverdue}d overdue</td><td><DueChip row={c} /></td>
                 </tr>))}
               </tbody></table></div>
               <p className="small muted" style={{ marginTop: 6 }}>Any stage, ranked by days past the due date.</p>
@@ -153,7 +153,7 @@ export function DashboardPage() {
           <div className="card"><h2>Recent activity</h2>
             <div>{data.recent.map(a => (
               <div key={a.hash || a.caseId + a.ts} className="tl">
-                <div className="when">{ago(a.ts) === 'today' ? 'today' : ago(a.ts) + ' ago'}</div>
+                <div className="when">{ago(a.ts)}</div>
                 <div><div className="what">{a.action}</div><div className="note">{a.caseTitle}, {a.actorName}</div></div>
               </div>))}
             </div>

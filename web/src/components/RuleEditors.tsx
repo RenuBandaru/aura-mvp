@@ -119,9 +119,9 @@ function RuleFields({ r, set, draft, labels, sources, isNew }: { r: Dict; set: S
         <select id="ed_r_kind" value={k} onChange={e => set('kind', e.target.value)}>
           {labels.kindOrder.map((x: string) => <option key={x} value={x}>{labels.ruleKinds[x]} ({help[x]})</option>)}
         </select></div>}
-      <div className="field"><span className="lab">When (all of these must hold)</span>
+      <div className="terms">{!(r.when || []).length && <p className="muted small">No conditions yet. A rule with no conditions never applies.</p>}
         <TermsEditor terms={r.when || []} onChange={v => set('when', v)} sources={sources} />
-        <p className="small muted" style={{ marginTop: 4 }}>All conditions must be true together. For "either/or", use an "any of" group or make two rules.</p></div>
+        <p className="small muted" style={{ marginTop: 4 }}>All conditions must be true together. For "either/or", make two rules.</p></div>
       {(k === 'guardrail' || k === 'condition') && <div className="field"><label htmlFor="ed_r_msg">{k === 'guardrail' ? 'What the submitter is told when this guardrail applies' : 'What must be confirmed'}</label>
         <input id="ed_r_msg" type="text" value={r.message || ''} onChange={e => set('message', e.target.value)} /></div>}
       {k === 'condition' && <div className="field"><label htmlFor="ed_r_by">Confirm before</label>
@@ -157,7 +157,7 @@ function ControlFields({ c, set, sources }: { c: Dict; set: Setter; sources: Sou
       </div>
       <div className="field"><span className="lab">This control applies only when (optional; blank means it applies to every use case)</span>
         <TermsEditor terms={c.applies || []} onChange={v => set('applies', v)} sources={sources} /></div>
-      <p className="small muted">Whether the control is required is set by the "Required control" rules.</p>
+      <p className="small muted">Whether the control is required is set by the "Control required" rules.</p>
     </div>
   );
 }
