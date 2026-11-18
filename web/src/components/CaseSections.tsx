@@ -8,10 +8,10 @@
 import { get } from '../api';
 import { go, useApp } from '../state';
 import type { CaseDetail, Dict } from '../types';
-import { DAY, fdate, fdateShort, fdatetime, ago, money, nowMs } from '../format';
+import { DAY, fdate, fdateShort, fdatetime, ago, money, nowMs, fdateY, tzName } from '../format';
 import { measuresText } from './MeasuresEditor';
+import { ALERT } from './bits';
 
-const ALERT = '⚠';
 const isBlank = (v: unknown) => v === '' || v == null || (typeof v === 'string' && !v.trim());
 const NP = () => <span className="muted">Not provided</span>;
 const seesInternal = (role: string) => ['lead', 'panel', 'exec', 'auditor', 'admin'].includes(role);
@@ -228,7 +228,7 @@ export function Assessment({ d, editing }: { d: CaseDetail; editing?: boolean })
             : (s.overrides || []).length ? 'Minimum tier rules were triggered but did not change the tier.' : 'No minimum tier rules applied.'}
             {c.vetting?.raisedTo ? ` The governance lead then raised it to ${boot.tierLabels[c.vetting.raisedTo]}.` : ''}</p>
         </>}
-      </div> : <p className="muted">Not assessed yet. A use case is scored when it is submitted for triage.</p>}
+      </div> : null}
       {!editing && c.stage !== 'suggestion' && <>
         <div className="card"><h2>Reach and autonomy</h2><div className="anslist">
           <div className="ans"><span>Reach: who is affected</span><span>{label(boot.scopeOpts, f.scope)} {pts(R.scopePoints?.[f.scope] || 0)}</span></div>
@@ -329,7 +329,7 @@ export function KpiCard({ d, embed }: { d: CaseDetail; embed?: boolean }) {
       <dl className="dl" style={{ marginTop: 10 }}>
         <dt>Production controls, conditions, and limits</dt><dd>{a.limits || 'Not set'}</dd>
         <dt>Scope approved</dt><dd>{a.scope}</dd>
-        <dt>Valid until</dt><dd>{fdate(a.validUntil)} ({a.validDays} days from {fdate(a.at)}){d.row.acceptanceExpired && <> <span className="chip warn">Expired</span></>}</dd>
+        <dt>Valid until</dt><dd>{fdateY(a.validUntil)} ({a.validDays} days from {fdateY(a.at)}){d.row.acceptanceExpired && <> <span className="chip warn">Expired</span></>}</dd>
         <dt>Production review</dt><dd>Every {a.prodReviewDays} days</dd>
         <dt>Approved by</dt><dd>{name(a.by)}{a.rv && <span className="muted small"> · rules v{a.rv}</span>}</dd>
       </dl>
@@ -505,9 +505,9 @@ function ReviewHistory({ d }: { d: CaseDetail }) {
   if (!rs.length) return null;
   const how = (h: string) => h === 'deadlock' ? ' (deadlock broken)' : h === 'quorum' ? ' (quorum waived)' : '';
   return (
-    <div className="card"><details><summary><b>Review history</b> <span className="muted small">{rs.length} round{rs.length > 1 ? 's' : ''}</span></summary>
-      {rs.map((r: Dict) => <div key={r.n} style={{ marginTop: 10 }}>
-        <h3>Round {r.n}: {r.kind === 'exec' ? 'executives' : 'panel'}, {fdateShort(r.at)}</h3>
+    <div className="card"><details open><summary><b>Review history</b> <span className="muted small">{rs.length} round{rs.length > 1 ? 's' : ''}</span></summary>
+      {rs.map((r: Dict) => <div key={r.n} className="hround">
+        <h3>Round {r.n}: {r.kind === 'exec' ? 'executives' : 'panel'}, {fdate(r.at)}</h3>
         <p className="small"><b>{r.outcome}{how(r.how)}</b>{r.summary ? ' · ' + r.summary : ''} <span className="muted">({name(r.by)})</span></p>
         {r.votes && <>
           <div className="tablewrap"><table><thead><tr><th>Who</th><th>Decision</th><th>Note</th></tr></thead><tbody>
@@ -535,18 +535,17 @@ export function Reviews({ d }: { d: CaseDetail }) {
 export function Activity({ d }: { d: CaseDetail }) {
   const { name } = useApp();
   const audit = [...(d.case.audit || [])].reverse();
-  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'your browser time zone'; } })();
   return (
-    <div className="card"><h2>Activity log <span className="row">{d.auditCheck.ok
+    <div className="card"><h2>Activity log <span>{d.auditCheck.ok
       ? <span className="chip ok" title="Each entry carries the hash of the one before it. Nothing has been changed, removed or reordered.">Audit chain intact ({d.auditCheck.entries})</span>
-      : <span className="chip bad" title={d.auditCheck.reason}>{ALERT} Audit trail broken at entry {d.auditCheck.brokenAt}</span>}
+      : <span className="chip bad" title={d.auditCheck.reason}>{ALERT} Audit trail broken at entry {d.auditCheck.brokenAt}</span>}{' '}
       <a href="#" className="small" onClick={e => { e.preventDefault(); go('audit', d.case.id); }}>Open in audit log</a></span></h2>
-      <div>{audit.map((e: Dict, i: number) => <div key={i} className="tl" style={{ gridTemplateColumns: '150px minmax(0, 1fr)' }}>
-        <div className="when">{fdatetime(e.ts)}<br />{ago(e.ts)}{ago(e.ts) === 'today' ? '' : ' ago'}</div>
+      <div className="timeline">{audit.map((e: Dict, i: number) => <div key={i} className="tl tlw">
+        <div className="when">{fdatetime(e.ts)}<br />{ago(e.ts)}</div>
         <div><div className="what">{e.action} {e.auto && <span className="chip auto">Automated</span>}</div>
-          <div className="note"><b style={{ color: 'var(--ink)' }}>{e.actor === 'system' ? 'System (automated)' : name(e.actor)}</b>
-            {e.note && <span style={{ borderLeft: '2px solid var(--line-2)', marginLeft: 8, paddingLeft: 8 }}>{e.note}</span>}</div></div></div>)}</div>
-      <p className="small muted" style={{ marginTop: 8 }}>Times are shown in {tz}, the time zone of this browser.</p>
+          <div className="note"><span className="actor">{e.actor === 'system' ? 'System (automated)' : name(e.actor)}</span>
+            {e.note && <span className="atext">{e.note}</span>}</div></div></div>)}</div>
+      <p className="small muted" style={{ marginTop: 8 }}>Times are shown in {tzName()}, the time zone of this browser.</p>
     </div>
   );
 }

@@ -56,9 +56,10 @@ export function ActionDialog({ caseId, action, extra, onClose, onDone, endpoint,
   return (
     <Backdrop onClose={onClose}>
       <div className={'modal' + (tabs.length ? ' wide' : '')} role="dialog" aria-modal="true" aria-label={action.label}>
-        <div className="phead"><div><h2>{action.label}</h2>{action.intro && <p className="small muted" style={{ marginTop: 4 }}>{action.intro}</p>}</div>
+        <div className="phead"><h3>{action.label}</h3>
           <button className="pclose" onClick={onClose} aria-label="Close">&times;</button></div>
-        {tabs.length > 0 && <div className="tabs" role="tablist" style={{ padding: '0 16px' }}>
+        {action.intro && <p className="intro small">{action.intro}</p>}
+        {tabs.length > 0 && <div className="tabs" role="tablist" aria-label="Approval sections">
           {tabs.map(([k, l]) => {
             const gaps = action.fields.filter(f => f.tab === k && missing.has(f.name)).length;
             return <button key={k} role="tab" aria-selected={k === tab} onClick={() => setTab(k)}>{l}{gaps ? <span className="chip bad" style={{ marginLeft: 6 }}>{gaps}</span> : null}</button>;

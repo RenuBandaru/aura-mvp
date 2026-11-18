@@ -115,11 +115,11 @@ export function DataPage() {
 
         <div className="card"><h2>Reset to sample data</h2>
           <p className="muted" style={{ marginBottom: 10 }}>Throws away every change, including imported people and use cases, and rebuilds the sample people and {info?.sampleCases ?? 18} sample use cases as of now, with the demo clock back at today. Download a backup first if you need your data.</p>
-          <button className="btn danger" disabled={!admin} onClick={() => window.confirm('Reset ALL data, including imported people and use cases, to the samples?') && run('/admin/reset', () => 'Sample data restored.')}>Reset to sample data</button>
+          <button className="btn warn" disabled={!admin} onClick={() => window.confirm('Reset ALL data, including imported people and use cases, to the samples?') && run('/admin/reset', () => 'Sample data restored.')}>Reset to sample data</button>
         </div>
         <div className="card"><h2>Tamper with the audit trail</h2>
           <p className="muted" style={{ marginBottom: 10 }}>Edits one old audit entry directly in the saved data, the way someone with database access might, without going through the engine. Then open the Audit log and press Verify audit trail to see the hash chain catch it. Demo admin only. Use it only on the sample data, never once real use cases are loaded, then reset.</p>
-          <button className="btn danger" disabled={!admin} onClick={() => run('/admin/tamper', r => `Entry ${r.entry} on ${r.caseId} was altered. Open the Audit log and run Verify audit trail.`)}>Alter one audit entry</button>
+          <button className="btn warn" disabled={!admin} onClick={() => run('/admin/tamper', r => `Entry ${r.entry} on ${r.caseId} was altered. Open the Audit log and run Verify audit trail.`)}>Alter one audit entry</button>
         </div>
         <div className="card"><h2>Demo clock</h2>
           <p className="muted" style={{ marginBottom: 10 }}>Moves time forward for everyone, to show overdue items and reminders without waiting. Currently {days} day{days === 1 ? '' : 's'} ahead. Due dates on real cases move too, so reset the clock when the demo is over.</p>

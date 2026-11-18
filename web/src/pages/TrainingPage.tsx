@@ -78,12 +78,12 @@ export function TrainingPage() {
 function Course({ t, canMark, onComplete }: { t: TrainingCard; canMark: boolean; onComplete: () => void }) {
   const stuck = t.contact && (t.state === 'due' || t.state === 'overdue');
   return (
-    <div className="card">
+    <div className="tcard">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <b>{t.title}</b>
-        <span className="row">{t.requiredToSubmit && <span className="chip">Required to submit</span>}<StateChip state={t.state} /></span>
+        <span>{t.requiredToSubmit && <><span className="chip">Required to submit</span> </>}<StateChip state={t.state} /></span>
       </div>
-      {t.summary && <p className="small" style={{ margin: '6px 0' }}>{t.summary}</p>}
+      <p className="small" style={{ margin: '6px 0' }}>{t.summary || ''}</p>
       <p className="muted small">
         {t.completedAt
           ? `Completed ${fdate(t.completedAt)} (version ${t.completedVersion}). Valid until ${fdate(t.validUntil)}. Refreshed every ${t.refreshMonths} months.`

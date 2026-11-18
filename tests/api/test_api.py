@@ -315,3 +315,47 @@ def test_form_preview_counts_section_gaps_and_the_before_you_submit_check(api):
     # Naming a confirmer, or giving evidence, takes a claimed control off the list.
     _, out = api("POST", "/api/cases/UC-1008/preview", pid="p_dana", body={"form": {**form, "evidence": {"c_log": "Log settings page"}}})
     assert out["softGaps"]["noConf"] == []
+
+
+def test_case_lists_only_eligible_confirmers(api):
+    _, d = api("GET", "/api/cases/UC-1003")
+    ok = d["confirmers"]
+    assert "p_grant" in ok  # the case's adoption adviser may confirm
+    assert "p_ravi" not in ok and "p_claire" not in ok  # consulted as experts on UC-1003
+    assert "p_elena" not in ok and "p_sam" not in ok  # the lead and panel reviewers review, so they cannot confirm
+    assert ok == ["p_jack", "p_hannah", "p_luis", "p_tamika", "p_mei", "p_omar", "p_mina", "p_grant"]
+
+
+def test_reviewer_sees_why_separation_of_duties_rules_them_out(api):
+    _, d = api("GET", "/api/cases/UC-1003", pid="p_sam")
+    assert d["dutyBlock"] == ""
+    next(c for c in api.store.cases if c["id"] == "UC-1003")["submitterId"] = "p_sam"
+    _, d = api("GET", "/api/cases/UC-1003", pid="p_sam")
+    assert d["dutyBlock"] == "Sam Okafor is the submitter or owner of this use case and cannot review as a panel member on it."
+    _, lead = api("GET", "/api/cases/UC-1003", pid="p_elena")
+    assert lead["dutyBlock"] == ""  # only panel reviewers and executives get the reason
+
+
+def test_approved_kpis_count_as_differing_from_the_proposal_as_in_build_27(api):
+    _, d = api("GET", "/api/cases/UC-1001")
+    assert d["kpis"]["approved"] and d["kpis"]["proposedDiffers"]
+
+
+def test_tool_page_links_the_use_case_it_came_from(api):
+    _, t = api("GET", "/api/tools/T-1001")
+    assert t["linkedCase"]["id"] == "UC-1001" and t["linkedCase"]["ownerName"] == "Dana Whitfield"
+    assert "validUntil" in t["linkedCase"] and "nextReviewAt" in t["linkedCase"]
+    _, other = api("GET", "/api/tools/T-1005")
+    assert "linkedCase" not in other  # reported tools have no use case
+
+
+def test_most_overdue_rows_carry_their_stage(api):
+    _, d = api("GET", "/api/dashboard")
+    assert d["mostOverdue"][0]["id"] == "UC-1007" and d["mostOverdue"][0]["stage"] == "exec"
+
+
+def test_outbox_returns_every_message_and_similar_returns_up_to_ten(api):
+    _, o = api("GET", "/api/outbox")
+    assert len(o) == sum(len(c.get("outbox") or []) for c in api.store.cases) + sum(len(t.get("outbox") or []) for t in api.store.tools)
+    _, sim = api("GET", "/api/similar", text="customer service chat email summary forecast maintenance")
+    assert len(sim) == 10

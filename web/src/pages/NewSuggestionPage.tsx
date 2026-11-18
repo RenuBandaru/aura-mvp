@@ -6,6 +6,7 @@ import { get, post } from '../api';
 import { go, useApp } from '../state';
 import type { CaseDetail, Dict } from '../types';
 import { PageHead } from '../components/bits';
+import { MatchCard, matchTerms } from '../components/MatchCard';
 
 export function NewSuggestionPage() {
   const { me, boot, toast, changed } = useApp();
@@ -17,7 +18,7 @@ export function NewSuggestionPage() {
 
   useEffect(() => {
     const text = (title + ' ' + idea).trim();
-    if (text.length < 4) { setSimilar([]); return; }
+    if (!matchTerms(text).length) { setSimilar([]); return; }
     const t = window.setTimeout(() => get<Dict[]>('/similar?text=' + encodeURIComponent(text)).then(setSimilar).catch(() => setSimilar([])), 300);
     return () => window.clearTimeout(t);
   }, [title, idea]);
@@ -37,29 +38,21 @@ export function NewSuggestionPage() {
   return (
     <>
       <PageHead title="New suggestion" sub="Anyone can log an AI idea. It does not need to be a full use case yet." />
-      <div className="card" style={{ maxWidth: 640 }}>
+      <div className="card" style={{ maxWidth: 640 }}><div className="stack">
         <div className="field"><label htmlFor="n_title">Title</label><input id="n_title" type="text" placeholder="A short name for the idea" value={title} onChange={e => setTitle(e.target.value)} /></div>
+        <div id="dupes" aria-live="polite">{matchTerms(title + ' ' + idea).length > 0 && (similar.length
+          ? <div className="callout"><b>Something similar may already exist</b><span className="muted small">You can still log your idea. A match may not be relevant, and nothing here blocks you. This is only to avoid duplicate work.</span>
+            {similar.map((m, i) => <MatchCard key={i} m={m} />)}</div>
+          : <p className="small muted">Nothing similar found in the catalog or the current use cases.</p>)}</div>
         <div className="field"><label htmlFor="n_idea">What is the idea?</label><textarea id="n_idea" placeholder="Describe the problem and how AI might help." value={idea} onChange={e => setIdea(e.target.value)} /></div>
         <div className="field"><label htmlFor="n_unit">Business unit</label>
           <select id="n_unit" value={unitId} onChange={e => setUnitId(e.target.value)}>
             {(boot.rules.units || []).map((u: Dict) => <option key={u.id} value={u.id}>{u.label}</option>)}
           </select><span className="small muted">Your adoption adviser for this unit is alerted to new ideas. Change it if the idea belongs to another unit.</span></div>
-        {similar.length > 0 && (
-          <div className="callout" style={{ marginBottom: 12 }}>
-            <b>Something similar may already exist</b>
-            {similar.map((m, i) => (
-              <span key={i} className="small">
-                <span className="chip">{m.kind === 'tool' ? 'AI tool' : 'Use case'}</span> <b>{m.ref.name || m.ref.title}</b>{' '}
-                <span className="muted">({m.ref.id}; matches: {(m.words || []).join(', ')})</span>{' '}
-                <a href={(m.kind === 'tool' ? '#/tools/' : '#/case/') + m.ref.id}>Open</a>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="row"><button className="btn primary" disabled={busy || !title.trim() || !idea.trim()} onClick={submit}>Log suggestion</button>
+        <div className="row"><button className="btn primary" disabled={busy} onClick={() => title.trim() && idea.trim() ? submit() : toast('Add a title and a short description.', true)}>Log suggestion</button>
           <button className="btn ghost" onClick={() => go('queue')}>Cancel</button></div>
-        <p className="small muted" style={{ marginTop: 8 }}>Submitting as {me.name}.</p>
-      </div>
+        <p className="small muted">Submitting as {me.name}.</p>
+      </div></div>
     </>
   );
 }

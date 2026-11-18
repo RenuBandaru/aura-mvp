@@ -10,24 +10,29 @@ export const toRows = (ms?: Dict[]): MeasureRow[] =>
   (ms || []).map(m => ({ name: text(m.name), dir: m.dir === 'higher' ? 'higher' : 'lower', target: text(m.target), scaleUp: text(m.scaleUp), stop: text(m.stop) }));
 const blank = (): MeasureRow => ({ name: '', dir: 'lower', target: '', scaleUp: '', stop: '' });
 
-export function MeasuresEditor({ rows, onChange, idPrefix }: { rows: MeasureRow[]; onChange: (r: MeasureRow[]) => void; idPrefix: string }) {
-  const set = (i: number, k: keyof MeasureRow, v: string) => onChange(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
+const SLOTS = 4;
+
+/** Build 27's measuresEditor: up to four rows, with at least minRows shown even when empty. */
+export function MeasuresEditor({ rows, onChange, idPrefix, minRows = 0 }: { rows: MeasureRow[]; onChange: (r: MeasureRow[]) => void; idPrefix: string; minRows?: number }) {
+  const shown = rows.length >= minRows ? rows : [...rows, ...Array.from({ length: minRows - rows.length }, blank)];
+  const set = (i: number, k: keyof MeasureRow, v: string) => onChange(shown.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   return (
     <div className="meas">
-      {rows.length > 0 && <div className="mrow mhead" aria-hidden="true"><span>KPI</span><span>Better when</span><span>Target</span><span>Scale-up target (optional)</span><span>Stop limit</span><span /></div>}
-      {rows.map((r, i) => (
+      {shown.length > 0 && <div className="mrow mhead" aria-hidden="true"><span>KPI</span><span>Better when</span><span>Target</span><span>Scale-up target (optional)</span><span>Stop limit</span><span /></div>}
+      {shown.map((r, i) => (
         <div className="mrow" key={i}>
-          <input aria-label={`KPI ${i + 1} name`} id={`${idPrefix}m${i}_name`} value={r.name} onChange={e => set(i, 'name', e.target.value)} />
-          <select aria-label={`KPI ${i + 1} better when`} value={r.dir} onChange={e => set(i, 'dir', e.target.value)}>
+          <input type="text" aria-label={`KPI ${i + 1} name`} id={`${idPrefix}m${i}_name`} value={r.name} placeholder={i ? 'Another KPI' : 'For example: hours per week saved'} onChange={e => set(i, 'name', e.target.value)} />
+          <select id={`${idPrefix}m${i}_dir`} value={r.dir} onChange={e => set(i, 'dir', e.target.value)}>
             <option value="lower">Lower is better</option><option value="higher">Higher is better</option>
           </select>
-          <input aria-label={`KPI ${i + 1} target`} type="number" step="any" value={r.target} onChange={e => set(i, 'target', e.target.value)} />
-          <input aria-label={`KPI ${i + 1} scale-up target`} type="number" step="any" value={r.scaleUp} onChange={e => set(i, 'scaleUp', e.target.value)} />
-          <input aria-label={`KPI ${i + 1} stop limit`} type="number" step="any" value={r.stop} onChange={e => set(i, 'stop', e.target.value)} />
-          <button type="button" className="btn ghost" aria-label={`Remove KPI ${i + 1}`} onClick={() => onChange(rows.filter((_, j) => j !== i))}>&times;</button>
+          <input type="number" step="any" id={`${idPrefix}m${i}_target`} aria-label={`KPI ${i + 1} target`} placeholder="Target" value={r.target} onChange={e => set(i, 'target', e.target.value)} />
+          <input type="number" step="any" id={`${idPrefix}m${i}_scale`} aria-label={`KPI ${i + 1} scale-up target`} placeholder="Scale-up" value={r.scaleUp} onChange={e => set(i, 'scaleUp', e.target.value)} />
+          <input type="number" step="any" id={`${idPrefix}m${i}_stop`} aria-label={`KPI ${i + 1} stop limit`} placeholder="Stop limit" value={r.stop} onChange={e => set(i, 'stop', e.target.value)} />
+          <button type="button" className="btn sm kpidel" aria-label={`Remove KPI ${i + 1}`} title="Remove this KPI" onClick={() => onChange(shown.filter((_, j) => j !== i))}>&times;</button>
         </div>
       ))}
-      <div><button type="button" className="btn" onClick={() => onChange([...rows, blank()])}>+ Add KPI</button></div>
+      <div className="kpiadd">{shown.length < SLOTS ? <button type="button" className="btn sm" onClick={() => onChange([...shown, blank()])}>+ Add a KPI</button>
+        : <span className="muted small">Four KPIs is the maximum.</span>}</div>
     </div>
   );
 }

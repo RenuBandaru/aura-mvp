@@ -9,6 +9,7 @@ Most functions here are ports of small view helpers from build 27's ``ui.js`` (`
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime, timezone
 
@@ -213,10 +214,10 @@ def kpi_view(c: dict) -> dict:
             if m:
                 bits.append(m["name"] + " " + str(v) + (" (" + controls.MEAS_STATE[st].lower() + ")" if st else ""))
         hist.append({"at": x.get("at"), "by": x.get("by"), "text": "; ".join(bits)})
-    strip = lambda ms: [{k: v for k, v in m.items() if k != "id"} for m in ms or []]  # noqa: E731
     return {"rows": rows, "history": hist, "approved": bool(a),
             "proposed": (a or {}).get("proposed") or [] if a else [],
-            "proposedDiffers": bool(a) and strip(a.get("proposed")) != strip(a.get("measures"))}
+            # build 27 compares the two lists as JSON, so approved KPIs (which carry ids) always differ from the proposal
+            "proposedDiffers": bool(a) and json.dumps(a.get("proposed")) != json.dumps([dict(m) for m in a.get("measures") or []])}
 
 
 def case_detail(c: dict, viewer: dict, ctx: dict) -> dict:
@@ -248,7 +249,20 @@ def case_detail(c: dict, viewer: dict, ctx: dict) -> dict:
         "now": now,
         "rounds": round_views(c, viewer, rules),
         "decLabels": {d: review.dec_label(d, c.get("tier"), c["stage"]) for d in review.DEC_LABEL},
+        # who may confirm a control on this case: experts and stakeholders plus the case's adviser, minus anyone the separation of duties rules out
+        "confirmers": confirmer_ids(c),
+        # why a reviewer who cannot review this case is left out (build 27 waitingOn)
+        "dutyBlock": people.duty_block(c, viewer["id"], viewer["role"]) if viewer.get("role") in ("panel", "exec") and c["stage"] in ("panel", "exec") else "",
     }
+
+
+def confirmer_ids(c: dict) -> list[str]:
+    """People who can be named to confirm a control. JavaScript ``attesterPeople`` filtered by ``dutyBlock(c, id, 'confirm')``."""
+    ps = [p for p in constants.PEOPLE if p["role"] in ("sme", "stakeholder")]
+    adv = constants.by_id(c.get("adviserId")) if c.get("adviserId") else None
+    if adv and adv.get("role") == "adviser":
+        ps.append(adv)
+    return [p["id"] for p in ps if not people.duty_block(c, p["id"], "confirm")]
 
 
 def round_views(c: dict, viewer: dict, rules: dict) -> list[dict]:
@@ -332,9 +346,14 @@ def form_preview(form: dict, rules: dict, evidence_items: list[dict] | None = No
     }
 
 
-def tool_view(t: dict, viewer: dict) -> dict:
-    """An AI tool catalog entry with what this person can do to it."""
-    return {**t, "actions": E.tool_actions(t, viewer), "statusLabel": TOOL_STATUS.get(t["status"], t["status"])}
+def tool_view(t: dict, viewer: dict, store_cases: list[dict] | None = None, ctx: dict | None = None) -> dict:
+    """An AI tool catalog entry with what this person can do to it, and the use case it came from (build 27 vTool's Linked use case)."""
+    out = {**t, "actions": E.tool_actions(t, viewer), "statusLabel": TOOL_STATUS.get(t["status"], t["status"])}
+    uc = next((c for c in store_cases or [] if c["id"] == t.get("useCaseId")), None) if t.get("useCaseId") else None
+    if uc and ctx:
+        out["linkedCase"] = {**case_row(uc, ctx), "validUntil": (uc.get("acceptance") or {}).get("validUntil"),
+                             "nextReviewAt": (uc.get("production") or {}).get("nextReviewAt"), "ownerName": constants.by_id(people.owner_of(uc))["name"] if people.owner_of(uc) else ""}
+    return out
 
 
 def outbox_for(data: dict, who: str | None = None) -> list[dict]:
@@ -623,7 +642,7 @@ def dashboard(data: dict, viewer: dict, now: int, ex_days: int = 180) -> dict:
         "pipeline": pipeline,
         "sentBackAt": [{"label": k, "count": n} for k, n in sorted(st["sentBackAt"].items(), key=lambda kv: -kv[1])],
         "rejected": [{"label": _REJECTED_AT.get(k, k), "count": n} for k, n in rejected.items()],
-        "mostOverdue": [{"id": c["id"], "title": c["title"], "stageLabel": constants.STAGE_LABEL[c["stage"]],
+        "mostOverdue": [{"id": c["id"], "title": c["title"], "stage": c["stage"], "stageLabel": constants.STAGE_LABEL[c["stage"]],
                          "daysOverdue": max(1, (now - c["dueAt"]) // constants.DAY), "dueAt": c["dueAt"]} for c in late],
         "recent": audit_entries(cases, viewer)[:8],
         "alerts": alert_rows(cases, now),

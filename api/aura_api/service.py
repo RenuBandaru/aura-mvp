@@ -94,7 +94,7 @@ def preview_form(store: Store, pid: str, case_id: str, form: dict) -> dict:
 
 def outbox(store: Store, pid: str, who: str | None = None) -> list[dict]:
     person(pid)
-    return views.outbox_for(store.data, who or None)[:200]
+    return views.outbox_for(store.data, who or None)
 
 
 def file_content(store: Store, pid: str, file_id: str) -> dict:
@@ -174,7 +174,7 @@ def new_suggestion(store: Store, actor: dict, title: str, idea: str, unit_id: st
 def similar(store: Store, pid: str, text: str, exclude: str | None = None) -> list[dict]:
     """Existing tools and cases that look like an idea, so people reuse before they build."""
     person(pid)
-    return E.match_catalog(text or "", store.tools, store.cases, 5, exclude)
+    return E.match_catalog(text or "", store.tools, store.cases, 10, exclude)
 
 
 def reminder_sweep(store: Store, pid: str) -> dict:
@@ -438,7 +438,7 @@ def get_tool(store: Store, pid: str, tool_id: str) -> dict:
     t = store.tool(tool_id)
     if not t or not E.tool_visible(t, p):
         raise NotFound("No AI tool " + tool_id + ".")
-    return views.tool_view(t, p)
+    return views.tool_view(t, p, store.cases, store.ctx())
 
 
 def new_tool(store: Store, pid: str) -> dict:
@@ -465,4 +465,4 @@ def tool_action(store: Store, pid: str, tool_id: str, action_id: str, inp: dict 
             return {"discarded": True}
         store.put_tool(nt)
         store.save()
-    return views.tool_view(nt, p)
+        return views.tool_view(nt, p, store.cases, store.ctx())

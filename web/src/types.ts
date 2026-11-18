@@ -76,6 +76,10 @@ export interface CaseDetail {
   actions: Action[];
   editable: boolean;
   waitingOn: string[];
+  /** People who may be named to confirm a control on this case. */
+  confirmers: string[];
+  /** Why the viewing reviewer cannot review this case, or ''. */
+  dutyBlock: string;
   scoring: Dict | null;
   support: Dict;
   measures: Dict[];
@@ -98,7 +102,7 @@ export interface CaseDetail {
   decLabels: Record<string, string>;
 }
 
-export interface Mail { ts: number; n?: number; to: string[]; subject: string; body: string; kind?: string; ref: { id: string; title: string } }
+export interface Mail { ts: number; n?: number; to: string[]; subject: string; body: string; kind?: string; second?: boolean; x?: unknown; ref: { id: string; title: string } }
 
 /** One row of the Audit log: an audit entry plus its case and the actor's name (GET /api/audit). */
 export interface AuditEntry {
@@ -154,7 +158,7 @@ export interface DashboardData {
   pipeline: { stage: string; label: string; total: number; tiers: Record<string, number> }[];
   sentBackAt: { label: string; count: number }[];
   rejected: { label: string; count: number }[];
-  mostOverdue: { id: string; title: string; stageLabel: string; daysOverdue: number; dueAt: number }[];
+  mostOverdue: { id: string; title: string; stage: string; stageLabel: string; daysOverdue: number; dueAt: number }[];
   recent: AuditEntry[];
   alerts: { id: string; title: string; stageLabel: string; tier?: string; tierLabel: string; items: string[] }[];
   exceptions: {

@@ -6,9 +6,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { post } from '../api';
 import { useApp } from '../state';
-import type { Dict } from '../types';
+import type { CaseDetail, Dict } from '../types';
+import { ALERT } from './bits';
 import { MeasuresEditor, toRows } from './MeasuresEditor';
-import { money } from '../format';
+import { fdate, money } from '../format';
 
 const SECTIONS: [string, string][] = [['about', 'The idea'], ['cost', 'Cost'], ['measures', 'KPIs'], ['risk', 'Risk'], ['ready', 'Data'], ['controls', 'Controls']];
 /** Full section names, for tooltips and the Next buttons. JavaScript FTAB_FULL. */
@@ -24,8 +25,17 @@ export const draftFrom = (form: Dict): DraftForm => ({ ...form, measures: toRows
 const token = (q: Dict, a: unknown) => (q.type === 'yesno' ? (a === true ? 'yes' : a === false ? 'no' : a) : a);
 const fromToken = (q: Dict, t: string) => (q.type === 'yesno' ? (t === 'yes' ? true : t === 'no' ? false : t) : t);
 
-export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting, returned, jump }: {
-  caseId: string; form: DraftForm; setForm: (f: DraftForm) => void; onPreview: (p: Dict | null) => void;
+export function FormEditor({ d, form, setForm, onPreview, unitId, accepting, returned, jump, showNeed, onEvidence, onRemoveEvidence, onRequest, onExisting }: {
+  d: CaseDetail; form: DraftForm; setForm: (f: DraftForm) => void; onPreview: (p: Dict | null) => void;
+  /** A submit was tried with answers missing: list them at the top and mark them (build 27's S.need). */
+  showNeed?: boolean;
+  /** Open the evidence dialog for a claimed control. */
+  onEvidence: (controlId: string) => void;
+  onRemoveEvidence: (evidenceId: string) => void;
+  /** "Send confirmation requests...". */
+  onRequest: () => void;
+  /** "Existing solutions" next to Alternatives considered. */
+  onExisting: () => void;
   /** The case's business unit, shown until the form names one. */
   unitId?: string;
   /** The owner is signing off, so the owner cannot be changed. */
@@ -36,6 +46,7 @@ export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting
 }) {
   const { boot, me, name } = useApp();
   const R = boot.rules;
+  const caseId = d.case.id, c = d.case;
   const [sec, setSec] = useState('about');
   const [preview, setPreview] = useState<Dict | null>(null);
   const timer = useRef<number>();
@@ -57,7 +68,7 @@ export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting
     setForm({ ...form, [k]: next });
   };
   const gapFields = new Set<string>(preview?.submitGaps?.fields || []);
-  const need = (k: string) => boot.formFields.some(x => x.k === k && gapFields.has(x.label));
+  const need = (k: string) => !!showNeed && boot.formFields.some(x => x.k === k && gapFields.has(x.label));
   const Help = ({ t }: { t?: React.ReactNode }) => t ? <span className="help">{t}</span> : null;
   const T = (k: string, label: string, area = false, wide = false, help?: React.ReactNode, placeholder?: string) => (
     <div className={'field' + (wide ? ' wide' : '') + (need(k) ? ' need' : '')}><label htmlFor={'uf_' + k}>{label}</label>
@@ -77,7 +88,8 @@ export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting
   const needs: Dict = preview?.controlNeeds || {};
   const gaps = preview?.submitGaps;
   const owners = boot.people.filter(p => OWNER_ROLES.includes(p.role));
-  const confirmers = boot.people.filter(p => !['admin', 'auditor', 'lead', 'panel', 'exec'].includes(p.role));
+  const confirmers = (d.confirmers || []).map(id => boot.people.find(p => p.id === id)).filter(Boolean) as typeof boot.people;
+  const canSave = d.actions.some(a => a.id === 'save_draft');
   const controls = (R.controls || []).filter((k: Dict) => k.enabled !== false && (needs[k.id] || form.controls.includes(k.id)))
     .sort((a: Dict, b: Dict) => Number(needs[b.id]?.level === 'required') - Number(needs[a.id]?.level === 'required'));
 
@@ -102,6 +114,7 @@ export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting
   return (
     <div className="card">
       <h2>Use case details <span className="chip">{accepting ? 'You are the owner: edit, then accept or decline' : returned ? 'Returned, please update' : 'Editable'}</span></h2>
+      {showNeed && gaps && <NeedBox gaps={gaps} onTab={k => go(k)} />}
       <div className="tabs" role="tablist" aria-label="Form sections">
         {SECTIONS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={k === sec} title={FULL[k]} onClick={() => setSec(k)}>{l}
           {preview && <span className={'n ' + (left[k] ? 'bad' : 'ok')} title={left[k] ? left[k] + ' still to answer' : 'Complete'}>{left[k] ? left[k] : '\u2713'}</span>}</button>)}
@@ -140,21 +153,22 @@ export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting
             <option value="total_year">A total, per year</option><option value="per_user_month">Per user, per month</option></select>
           <Help t="A high per-user cost gets extra budget scrutiny from reviewers. It never stops the case." /></div>
         {T('budgetSource', 'Whose budget pays for it?', false, false, 'If the cost comes out of the IT budget, the owner should be IT.')}
-        {T('alternatives', 'Alternatives considered, including doing it another way (optional)', true, true)}
+        <div className={'field wide' + (need('alternatives') ? ' need' : '')}><label htmlFor="uf_alternatives">Alternatives considered, including doing it another way (optional) <button type="button" className="btn sm" style={{ marginLeft: 8 }} onClick={onExisting}>Existing solutions</button></label>
+          <textarea id="uf_alternatives" value={form.alternatives ?? ''} onChange={e => set('alternatives', e.target.value)} /></div>
         {T('costOfNothing', 'Cost and risk of carrying on as is if this is not approved (optional)', true, true)}
         {preview?.budgetFlag && <p className="callout warn wide">The ongoing cost is {money(preview.budgetFlag.amount)} per user per month, above the {money(preview.budgetFlag.limit)} limit, so the budget gets extra scrutiny.</p>}
       </div><Nav k="cost" /></div>}
 
       {show('measures') && <div className="fallsec"><h3 style={{ margin: '0 0 4px' }}>KPIs: how will we know it works, and when should we stop?</h3>
-        <p className="small muted" style={{ marginBottom: 8 }}>Propose up to four KPIs (key performance indicators). The approver can edit them. Each needs a target and a stop limit: if the result passes the stop limit, the case is flagged automatically.</p>
-        <MeasuresEditor idPrefix="uf_" rows={form.measures} onChange={r => set('measures', r)} /><Nav k="measures" /></div>}
+        <p className="muted small" style={{ marginBottom: 6 }}>Propose up to four KPIs (key performance indicators). The approver can edit them. Each needs a target and a stop limit: if the result passes the stop limit, the case is flagged automatically.</p>
+        <MeasuresEditor idPrefix="uf_" rows={form.measures} onChange={r => set('measures', r)} minRows={!c.triage && !c.returned && !c.priorAcceptance && !c.acceptance ? 1 : 0} /><Nav k="measures" /></div>}
 
       {show('risk') && <div className="fallsec"><h3 style={{ margin: '0 0 4px' }}>Reach and autonomy</h3>
         <div className="formgrid">{S('scope', 'Reach', boot.scopeOpts, false, undefined, false)}{S('autonomy', 'How much does it act on its own?', boot.autonomyOpts, false, undefined, false)}</div>
         <h3 style={{ margin: '14px 0 4px' }}>Risk questions</h3>{(R.questions || []).filter((q: Dict) => q.enabled !== false && shownQ.has(q.id)).map((q: Dict) => {
         const opts = boot.questionOptions[q.id] || [];
         const cur = token(q, form.answers[q.id]);
-        const missing = gaps?.questions.some((x: Dict) => x.id === q.id);
+        const missing = showNeed && gaps?.questions.some((x: Dict) => x.id === q.id);
         return <div key={q.id} className={'qa' + (missing ? ' need' : '')}><span>{q.text}</span><span className="yn">
           {q.type === 'multi' ? opts.map(o => <label key={o.id}><input type="checkbox" checked={(form.answers[q.id] || []).includes(o.id)}
             onChange={e => { const list = (form.answers[q.id] || []).filter((x: string) => x !== o.id); setIn('answers', q.id, e.target.checked ? [...list, o.id] : list.length ? list : undefined); }} /> {o.label}</label>)
@@ -166,7 +180,7 @@ export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting
 
       {show('ready') && <div className="fallsec"><h3 style={{ margin: '0 0 4px' }}>Data readiness: is it feasible?</h3>{(R.readiness || []).filter((r: Dict) => r.enabled !== false).map((r: Dict) => {
         const cur = form.readiness[r.id];
-        const missing = gaps?.readiness.some((x: Dict) => x.id === r.id);
+        const missing = showNeed && gaps?.readiness.some((x: Dict) => x.id === r.id);
         return <div key={r.id} className={'qa' + (missing ? ' need' : '')}><span>{r.text}</span><span className="yn">
           {[['yes', true, 'Yes'], ['no', false, 'No'], ['unknown', 'unknown', 'Not known']].map(([k, val, l]) =>
             <label key={String(k)}><input type="radio" name={'rd_' + r.id} checked={cur === val} onChange={() => setIn('readiness', r.id, val)} /> {String(l)}</label>)}
@@ -176,28 +190,56 @@ export function FormEditor({ caseId, form, setForm, onPreview, unitId, accepting
       {show('controls') && <div className="fallsec"><h3 style={{ margin: '0 0 6px' }}>Controls in place or planned</h3>
         {naCtl.length > 0 && <div className="callout warn" style={{ marginBottom: 8 }}><b>{naCtl.length === 1 ? 'A control you claimed no longer applies' : naCtl.length + ' controls you claimed no longer apply'} to your answers</b>
           <span className="small">{naCtl.map((k: Dict) => k.short || k.text).join('; ')}. They earn no credit now, but nothing is lost: if you change the answer back they count again, with their evidence and confirmations. You can leave them, or untick them to remove them. A confirmer who was asked will be told their input is no longer needed for that control.</span></div>}
-        <p className="small muted" style={{ marginBottom: 8 }}>Your answers decide which controls are <b>required</b> for this use case. Claim each required control before you submit. If you cannot back a claim, work with the owner, the adoption adviser, or the governance lead before you submit. Recommended controls are optional. Controls marked "Needs confirmation" need a named person to confirm them. Evidence you attach also counts as support. On other controls, name a confirmer too: it strengthens your request. Approval is never held up waiting for one.</p>
-        {controls.map((k: Dict) => {
-          const picked = form.controls.includes(k.id), nd = needs[k.id];
-          return <div key={k.id} className={'ctl' + (picked && !nd ? ' na' : '')}>
-            <label className="row" style={{ alignItems: 'flex-start' }}><input type="checkbox" checked={picked}
+        <p className="muted small" style={{ marginBottom: 6 }}>Your answers decide which controls are <b>required</b> for this use case. Claim each required control before you submit. If you cannot back a claim, work with the owner, the adoption adviser, or the governance lead before you submit. Recommended controls are optional. Controls marked "Needs confirmation" need a named person to confirm them. Evidence you attach also counts as support. On other controls, name a confirmer too: it strengthens your request. Approval is never held up waiting for one. You can send the requests before you submit: the people you name can respond any time before approval.</p>
+        <div className="checks" id="ctlbox">{controls.map((k: Dict) => {
+          const picked = form.controls.includes(k.id), nd = needs[k.id], req = k.attest === 'required';
+          const asked = (c.attestations || []).find((a: Dict) => a.controlId === k.id);
+          const attNeed = showNeed && gapFields.has('Someone to confirm: ' + k.text);
+          return <div key={k.id} className={'ctl' + (picked && !nd ? ' na' : '') + (nd?.level === 'required' && !picked ? ' reqopen' : '')} data-ctlid={k.id}>
+            <label><input type="checkbox" checked={picked}
               onChange={e => set('controls', e.target.checked ? [...form.controls, k.id] : form.controls.filter((x: string) => x !== k.id))} />
-              <span>{k.text} {nd?.level === 'required' && <span className="chip bad">Required</span>}{nd?.level === 'recommended' && <span className="chip">Recommended</span>}
-                {picked && !nd && <span className="chip">Does not apply to your answers</span>}
-                {k.attest === 'required' && <span className="chip warn">Needs confirmation</span>}</span></label>
-            {picked && <div className="formgrid" style={{ marginTop: 8 }}>
-              <div className="field"><label>{k.attest === 'required' ? 'Who can confirm this? (required)' : 'Offer a confirmation (optional)'}</label>
-                <select value={form.attesters[k.id] || ''} onChange={e => setIn('attesters', k.id, e.target.value || undefined)}>
-                  <option value="">{k.attest === 'required' ? 'Choose a person...' : 'No one'}</option>
+              {' '}{k.text} {picked && !nd && <span className="chip">Does not apply to your answers</span>}{' '}
+              {req && <span className="chip warn" title="Name a person who can confirm this control. Evidence you add also counts as support.">Needs confirmation</span>}
+              {asked && <> <span className={'chip ' + (asked.status === 'confirmed' ? 'ok' : asked.status === 'declined' ? 'bad' : 'warn')}>
+                {asked.status === 'pending' ? 'Asked ' + name(asked.personId) + ', no reply yet' : name(asked.personId) + ' ' + asked.status}</span></>}</label>
+            <div className="ctlneed small">{nd?.level && <>{nd.level === 'required' ? <span className="chip bad">Required</span> : <span className="chip">Recommended</span>}{' '}
+              <span className="muted">because: {(nd.reasons || []).filter((r: Dict) => r.level === nd.level).map((r: Dict) => r.label).join('; ')}</span></>}</div>
+            {picked && <div className="attrow" id={'attrow_' + k.id}>
+              <div className={'field' + (attNeed ? ' need' : '')}><label htmlFor={'uf_att_' + k.id}>{req ? 'Who can confirm this? (required)' : 'Offer a confirmation to strengthen your request (optional)'}</label>
+                <select id={'uf_att_' + k.id} value={form.attesters[k.id] || ''} onChange={e => setIn('attesters', k.id, e.target.value || undefined)}>
+                  <option value="">{req ? 'Choose a person...' : 'No one'}</option>
                   {confirmers.map(p => <option key={p.id} value={p.id}>{p.name}, {p.title}</option>)}</select></div>
-              <div className="field"><label>Evidence: a link or reference</label>
-                <input type="text" value={form.evidence[k.id] || ''} placeholder="For example: test report TR-1234" onChange={e => setIn('evidence', k.id, e.target.value || undefined)} /></div>
+              <div className="field"><label htmlFor={'uf_ev_' + k.id}>Evidence: a link or reference</label>
+                <input type="text" id={'uf_ev_' + k.id} value={form.evidence[k.id] || ''} placeholder="For example: test report TR-1234" onChange={e => setIn('evidence', k.id, e.target.value || undefined)} />
+                {(c.evidenceItems || []).filter((e: Dict) => e.controlId === k.id && !e.removed).map((e: Dict) => {
+                  const can = d.actions.some(a => a.id === 'remove_evidence' && a.evidenceId === e.id);
+                  return <div key={e.id} className="evi">{e.kind === 'link' ? <a href={e.url} target="_blank" rel="noopener noreferrer">{e.name}</a>
+                    : <><a href={'/api/files/' + encodeURIComponent(e.fileId)} download={e.name}>{e.name}</a> <span className="muted">({e.size < 1024 ? e.size + ' bytes' : Math.round(e.size / 1024) + ' KB'})</span></>}
+                    <div className="muted small">{name(e.by)}, {fdate(e.at)}{e.note ? '. ' + e.note : ''}{can && <> <a href="#" onClick={ev => { ev.preventDefault(); onRemoveEvidence(e.id); }}>Remove</a></>}</div></div>;
+                })}
+                {canSave && <button type="button" className="btn sm" style={{ marginTop: 6 }} title="Attach a document or a link as evidence" onClick={() => onEvidence(k.id)}>+ Attach a document or link</button>}</div>
             </div>}
-            {nd?.reasons?.length > 0 && <div className="small muted" style={{ marginTop: 4 }}>because: {nd.reasons.filter((r: Dict) => r.level === nd.level).map((r: Dict) => r.label).join('; ')}</div>}
           </div>;
-        })}
+        })}</div>
+        <div className="reqrow"><button type="button" className="btn primary" title="Ask the people you named to confirm their controls now, before you submit" onClick={onRequest}>Send confirmation requests...</button>
+          <span className="small muted">You will see who would be emailed and approve it before anything is sent.</span></div>
         <Nav k="controls" />
       </div>}
     </div>
   );
+}
+
+/** What is still missing after a submit was tried, grouped by section, each with a button to that section. Build 27's needBox. */
+function NeedBox({ gaps, onTab }: { gaps: Dict; onTab: (k: string) => void }) {
+  const { boot } = useApp();
+  if (!gaps.count) return <div className="callout ok" style={{ marginTop: 10 }}><b>Everything is answered</b><span>You can submit for triage.</span></div>;
+  const COST = ['costUSD', 'ongoingCostUSD', 'budgetSource'];
+  const tabOf = (l: string) => { const x = boot.formFields.find(f => f.label === l); return x ? (COST.includes(x.k) ? 'cost' : 'about') : /^At least one KPI/.test(l) ? 'measures' : 'controls'; };
+  const g: Record<string, string[]> = { about: [], cost: [], measures: [], risk: [], ready: [], controls: [] };
+  gaps.fields.forEach((l: string) => g[tabOf(l)].push(l));
+  gaps.questions.forEach((q: Dict) => g.risk.push((boot.rules.questions || []).find((x: Dict) => x.id === q.id)?.short || q.text));
+  gaps.readiness.forEach((r: Dict) => g.ready.push(r.text));
+  return <div className="callout bad" id="needbox" style={{ marginTop: 10 }}><b>{ALERT} Answer these before submitting ({gaps.count})</b>
+    {SECTIONS.filter(([k]) => g[k].length).map(([k]) => <span key={k}><button type="button" className="btn ghost sm" style={{ padding: '0 4px', fontWeight: 700 }} onClick={() => onTab(k)}>{FULL[k]} ({g[k].length}):</button> {g[k].join('; ')}.</span>)}
+    <span className="muted small">Unanswered risk questions and readiness checks are highlighted in their sections. Choose "Not known" where it is offered if you truly do not know.</span></div>;
 }
