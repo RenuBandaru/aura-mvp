@@ -1,5 +1,5 @@
 // Small display pieces shared by many pages: tier gauges, due chips, warning chips, the case table,
-// the page heading, a full-screen dialog backdrop and a data loader.
+// the page heading, a full-screen dialog backdrop (whose dialogs drag by their title bar) and a data loader.
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -121,7 +121,38 @@ export function Backdrop({ onClose, children }: { onClose?: () => void; children
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
   }, [onClose]);
-  return createPortal(<div className="modalbg" onMouseDown={e => onClose && e.target === e.currentTarget && onClose()}>{children}</div>, document.body);
+  return createPortal(<div className="modalbg" onMouseDown={e => onClose && e.target === e.currentTarget && onClose()} onPointerDown={startDrag}>{children}</div>, document.body);
+}
+
+/** The part of a dialog you can drag it by: its title bar, or the title of a plain dialog. */
+const DRAG_HANDLE = '.modal > .phead, .modal.plain > h2, .modal.plain > h3';
+
+/**
+ * Lets a dialog be dragged aside by its title bar, to see the page behind it. The dialog keeps at
+ * least 80 pixels of its title bar inside the window, so it can always be dragged back or closed.
+ * Buttons and fields in the title bar (the X) still work as before.
+ */
+function startDrag(e: React.PointerEvent<HTMLDivElement>) {
+  const t = e.target as HTMLElement;
+  if (e.button !== 0 || t.closest('button, a, input, select, textarea')) return;
+  const handle = t.closest(DRAG_HANDLE);
+  const box = handle?.parentElement;
+  if (!handle || !box) return;
+  e.preventDefault();
+  const [dx0, dy0] = (box.dataset.drag || '0,0').split(',').map(Number);
+  const r = box.getBoundingClientRect(), hr = handle.getBoundingClientRect();
+  const x0 = e.clientX, y0 = e.clientY, keep = 80;
+  const move = (m: PointerEvent) => {
+    const dx = Math.min(Math.max(dx0 + m.clientX - x0, dx0 + keep - r.right), dx0 + window.innerWidth - keep - r.left);
+    const dy = Math.min(Math.max(dy0 + m.clientY - y0, dy0 - r.top), dy0 + window.innerHeight - (hr.bottom - r.top) - r.top);
+    box.dataset.drag = dx + ',' + dy;
+    box.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); box.classList.remove('dragging'); };
+  box.classList.add('dragging');
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', stop);
+  window.addEventListener('pointercancel', stop);
 }
 
 /** Loads data with the given loader whenever any of the dependencies change. */

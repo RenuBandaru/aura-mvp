@@ -555,3 +555,8 @@ h4 { margin: 0; font-size: 13px; }
 .modal.plain { padding: 18px; display: block; overflow: auto; }
 /* Emails */
 details.msg pre { white-space: pre-wrap; font: inherit; margin: 8px 0 0; }
+
+/* Dialogs drag by their title bar (bug list item 26) */
+.modal > .phead, .modal.plain > h2, .modal.plain > h3 { cursor: move; user-select: none; touch-action: none; }
+.modal > .phead button { cursor: pointer; }
+.modal.dragging { user-select: none; }
