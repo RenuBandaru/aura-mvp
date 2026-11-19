@@ -17,7 +17,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  serviceConnection: 'NAME-OF-THE-UAT-SERVICE-CONNECTION'  # Project settings, Service connections (a name, not a secret)
+  serviceConnection: 'PSU_AI_UAT_Service_Connection'  # Project settings, Service connections (a name, not a secret)
   resourceGroup: 'PSU_AI_UAT'
   functionApp: 'aura-uat-api'
   staticWebApp: 'aura-uat-web'
