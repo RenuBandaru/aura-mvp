@@ -29,7 +29,7 @@ stages:
     steps:
     - task: UsePythonVersion@0
       inputs:
-        versionSpec: '3.11'
+        versionSpec: '3.13'
     - script: |
         pip install -r requirements-dev.txt
         python -m pytest
@@ -73,7 +73,7 @@ stages:
               appType: functionAppLinux
               appName: '$(functionApp)'
               package: '$(Pipeline.Workspace)/api/aura-api.zip'
-              runtimeStack: 'PYTHON|3.11'
+              runtimeStack: 'PYTHON|3.13'
               deploymentMethod: zipDeploy
           - task: AzureCLI@2
             displayName: Get the website upload token for this run only
